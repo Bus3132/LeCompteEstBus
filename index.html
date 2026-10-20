@@ -210,9 +210,14 @@ if(!data || !data.counts) data = load(KEYBAK,null);
 const resumed = !!(data && data.counts && Object.values(data.counts).some(c=>c && (c.open!==''||c.closed!=='')));
 if(!data || !data.counts) data = { date: todayShort(), counts:{} };
 let settings = load(KEYSET,{});
+const DEFAULT_CAMION = {
+  m5:20, m10:34, m20:20, m40:40, m60:40,
+  b0_4:7, b1:7, b2:14, b4:14, b6:14, b8:14,
+  o2:7, o8:7
+};
 ALL.forEach(it=>{
   if(!data.counts[it.id]) data.counts[it.id]={open:'',closed:''};
-  if(!settings[it.id]) settings[it.id]={fixed:0, per:it.g.per};
+  if(!settings[it.id]) settings[it.id]={fixed:DEFAULT_CAMION[it.id] ?? 0, per:it.g.per};
 });
 let tab = load(KEYTAB,'metha'); if(!ORDER.includes(tab)) tab='metha';
 const h0=load(KEYHIST,null);
