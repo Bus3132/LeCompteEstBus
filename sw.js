@@ -1,6 +1,6 @@
 // Le compte est bus — permet d'ouvrir l'appli même sans réseau.
 // Toujours la version en ligne d'abord ; la copie en cache sert seulement hors connexion.
-const CACHE = 'compte-est-bus-v3';
+const CACHE = 'compte-est-bus-v4';
 const FILES = [
   './',
   './index.html',

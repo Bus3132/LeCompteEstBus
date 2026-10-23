@@ -2,7 +2,7 @@
 
 Appli de comptage quotidien des TSO (traitements de substitution aux opiacés) pour le Bus 31/32, à Marseille.
 
-**Lien de l'appli : https://julienaron.github.io/bus3132-comptage/**
+**Lien de l'appli : https://bus3132.github.io/LeCompteEstBus/**
 
 ![Le compte est bus](img/logo.jpg)
 
