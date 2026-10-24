@@ -1,6 +1,6 @@
 // Le compte est bus — permet d'ouvrir l'appli même sans réseau.
 // Toujours la version en ligne d'abord ; la copie en cache sert seulement hors connexion.
-const CACHE = 'compte-est-bus-v5';
+const CACHE = 'compte-est-bus-v6';
 const TIMEOUT_MS = 3500; // au-delà, on sert la copie locale (réseau faible dans le bus)
 const FILES = [
   './',

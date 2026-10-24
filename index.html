@@ -66,6 +66,13 @@ button:focus-visible,input:focus-visible,a:focus-visible,summary:focus-visible{o
 /* ---------- Barre collante ---------- */
 header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:8px 10px;display:grid;gap:8px;border-bottom:1px solid var(--line)}
 .toolbar{display:flex;gap:6px}
+.tbtn.next{background:var(--navy);color:#fff;border-color:var(--navy)}
+.notice.lock{background:#e8f0fb;color:var(--navy)}
+.notice.lock button,.notice button.strong{border:1.5px solid currentColor;text-decoration:none;border-radius:9px;padding:6px 10px}
+.panel.locked input.num,.panel.locked .chip{opacity:.55}
+.issues{margin:0;padding:10px 12px;background:var(--warn-bg);color:var(--warn);border-radius:10px;font-size:15px;display:grid;gap:4px;list-style:none}
+.dialog a.wa{font-size:17px;padding:14px 16px}
+.dialog .primary{padding:15px 16px;font-size:17px}
 .tbtn{border:1px solid var(--line);background:var(--surface);border-radius:10px;height:40px;padding:0 10px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:14px;font-weight:700;color:var(--navy)}
 .tbtn:disabled{opacity:.35;cursor:default}
 .tbtn svg{width:18px;height:18px;flex:0 0 auto}
@@ -221,6 +228,7 @@ footer button{border:0;background:transparent;color:var(--blue);text-decoration:
       <button class="tbtn" id="redo" title="Rétablir la saisie annulée">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg><span class="opt">Rétablir</span>
       </button>
+      <button class="tbtn next" id="nextbtn" hidden>Suivant ›</button>
       <button class="tbtn reset" id="reset" title="Effacer toutes les saisies et recommencer">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg><span>Remise à zéro</span>
       </button>
@@ -352,6 +360,23 @@ function updateChrome(){
 
 const inputAttrs='inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" autocomplete="off"';
 
+/* ---------- Envoi / verrouillage ---------- */
+function markSent(){ data.sent=Date.now(); persist(); render(); toast('Comptage envoyé et verrouillé'); }
+function fmtTs(ts){ const d=new Date(ts); return d.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'})+' à '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }
+function lockBanner(){ return data.sent ? `<div class="notice lock"><span>Comptage envoyé ${fmtTs(data.sent)}. Les saisies sont verrouillées.</span><button data-unlock>Modifier</button></div>` : ''; }
+
+/* ---------- Vérification avant envoi ---------- */
+function issues(){
+  const out=[];
+  ALL.forEach(it=>{ const c=data.counts[it.id], s=settings[it.id], g=it.g;
+    if(!filled(it.id)) out.push(`${it.sub} ${it.label} : non compté`);
+    else if(c.open==='') out.push(`${it.sub} ${it.label} : ${g.openLbl.toLowerCase()} ?`);
+    else if(c.closed==='') out.push(`${it.sub} ${it.label} : ${g.closedLbl.toLowerCase()} ?`);
+    else if(g.chips && n(c.open)>=s.per) out.push(`${it.sub} ${it.label} : ${g.container} ouvert ≥ ${s.per}`);
+  });
+  return out;
+}
+
 /* ---------- Saisie ---------- */
 function groupHead(g){ const pers=[...new Set(g.items.map(it=>settings[it.id].per))]; return pers.length===1 ? `1 ${g.container} = ${pers[0]} ${g.unit}` : `${g.unit} par ${g.container} : voir réglages`; }
 function renderGroup(g){
@@ -359,9 +384,10 @@ function renderGroup(g){
   const nextTab = ORDER[ORDER.indexOf(g.id)+1];
   const nextLbl = {bupre:'Suivant : Bupré', oro:'Suivant : Orobupré', res:'Voir le résultat'}[nextTab];
   const c3 = g.chips ? 'c3' : '';
+  const locked=!!data.sent, dis=locked?' disabled':'';
   main.innerHTML = `
-  <section class="panel ${g.id}">
-    ${resumeBanner()}
+  <section class="panel ${g.id}${locked?' locked':''}">
+    ${resumeBanner()}${lockBanner()}
     <div class="ghead"><h2><span class="pill">${g.short}</span>${g.name}</h2><p>${groupHead(g)}</p></div>
     ${unset===g.items.length ? `<div class="notice"><span>Le nombre « camion » n'est pas réglé (compté 0).</span><button data-open-settings>Régler</button></div>`:''}
     <div class="list">
@@ -370,16 +396,16 @@ function renderGroup(g){
       <div class="item" data-id="${it.id}"${it.color?` style="--dc:${it.color}"`:''}>
         <div class="row ${c3}">
           <div class="dose">${vial(it.color)}<span>${it.label}<small>${it.sub}</small></span></div>
-          <input class="num" id="o-${it.id}" data-id="${it.id}" data-f="open" ${inputAttrs} placeholder="0" aria-label="${it.sub} ${it.label} — ${g.openLbl}">
-          ${g.chips?'':`<input class="num" id="c-${it.id}" data-id="${it.id}" data-f="closed" ${inputAttrs} placeholder="0" aria-label="${it.sub} ${it.label} — ${g.closedLbl}">`}
+          <input class="num" id="o-${it.id}" data-id="${it.id}" data-f="open" ${inputAttrs}${dis} placeholder="0" aria-label="${it.sub} ${it.label} — ${g.openLbl}">
+          ${g.chips?'':`<input class="num" id="c-${it.id}" data-id="${it.id}" data-f="closed" ${inputAttrs}${dis} placeholder="0" aria-label="${it.sub} ${it.label} — ${g.closedLbl}">`}
           <div class="total" id="tot-${it.id}"></div>
         </div>
         ${g.chips?`
         <div class="chips" role="group" aria-label="${it.label} — ${g.closedLbl}">
           <span class="clab">${g.closedLbl}</span>
-          ${Array.from({length:g.chips+1},(_,k)=>`<button class="chip" data-chip="${k}" data-id="${it.id}" aria-pressed="false">${k}</button>`).join('')}
-          <button class="chip more" data-more data-id="${it.id}" aria-pressed="false">${g.chips+1}+</button>
-          <input class="num" id="c-${it.id}" data-id="${it.id}" data-f="closed" ${inputAttrs} placeholder="${g.chips+1}" aria-label="${it.label} — ${g.closedLbl}, plus de ${g.chips}" hidden>
+          ${Array.from({length:g.chips+1},(_,k)=>`<button class="chip" data-chip="${k}" data-id="${it.id}" aria-pressed="false"${dis}>${k}</button>`).join('')}
+          <button class="chip more" data-more data-id="${it.id}" aria-pressed="false"${dis}>${g.chips+1}+</button>
+          <input class="num" id="c-${it.id}" data-id="${it.id}" data-f="closed" ${inputAttrs}${dis} placeholder="${g.chips+1}" aria-label="${it.label} — ${g.closedLbl}, plus de ${g.chips}" hidden>
         </div>`:''}
         <div class="formula" id="f-${it.id}"></div>
       </div>`).join('')}
@@ -445,9 +471,9 @@ function renderResult(){
   const missing = ALL.filter(it=>!filled(it.id)).length;
   main.innerHTML = `
   <section class="panel">
-    ${resumeBanner()}<div class="ghead"><h2><span class="pill">TOTAL</span>Ce qui reste</h2><p>${todayShort()}</p></div>
+    ${resumeBanner()}${lockBanner()}<div class="ghead"><h2><span class="pill">TOTAL</span>Ce qui reste</h2><p>${todayShort()}</p></div>
     ${missing?`<div class="notice"><span>${missing} dosage(s) pas encore compté(s).</span></div>`:''}
-    <a class="wa" href="https://wa.me/?text=${encodeURIComponent(resultText())}" target="_blank" rel="noopener">${waIcon}Envoyer sur WhatsApp</a>
+    <a class="wa" id="wa" href="${waHref()}" target="_blank" rel="noopener">${waIcon}${data.sent?'Renvoyer sur WhatsApp':'Envoyer sur WhatsApp'}</a>
     <div class="tablewrap"><table>
       <thead><tr><th>Dosage</th><th>À l'unité</th><th>Fermés</th><th>Camion</th><th>Reste</th></tr></thead>
       ${GROUPS.map(g=>`<tbody class="${g.id}">
@@ -465,6 +491,7 @@ function renderResult(){
     <div id="slot"></div>
   </section>`;
 }
+function waHref(){ return 'https://wa.me/?text='+encodeURIComponent(resultText()); }
 
 function itemName(id){ const it=ALL.find(x=>x.id===id); return it ? it.sub+' '+it.label : ''; }
 function resumeBanner(){
@@ -477,7 +504,7 @@ function resumeBanner(){
     <strong>Comptage repris là où vous l'aviez laissé</strong>
     <span>Dernière saisie ${whenTxt}${lastId?' : '+itemName(lastId):''}. ${left?left+' dosage(s) restent à compter.':'Tout est compté.'}</span>
     ${sameDay?'':'<span><b>Attention, ce comptage date d\'un autre jour.</b></span>'}
-    <div><button data-resume-ok>Continuer</button>${sameDay?'':'<button data-resume-new>Remise à zéro</button>'}</div>
+    <div><button data-resume-ok>Continuer</button>${sameDay?'':'<button data-resume-new>Nouveau comptage</button>'}</div>
   </div>`;
 }
 function markHere(){
@@ -525,8 +552,18 @@ function askReset(){
       <button class="secondary" data-close data-autofocus>Non, garder le comptage</button>
     </div>`);
 }
+function askNewDay(){
+  const left=ALL.filter(it=>!filled(it.id)).length;
+  openModal(`
+    <h3 id="modal-title">Nouveau jour</h3>
+    <p>Le comptage affiché date du <b>${data.date}</b>${data.sent?' et a été envoyé':''}${left?` (${left} dosage${left>1?'s':''} non compté${left>1?'s':''})`:''}.</p>
+    <div class="btns">
+      <button class="primary" id="newday-reset" data-autofocus>Nouveau comptage</button>
+      <button class="secondary" data-close>Reprendre celui du ${data.date}</button>
+    </div>`);
+}
 function doReset(){
-  const b=snap(); ALL.forEach(it=>data.counts[it.id]={open:'',closed:''}); data.date=todayShort();
+  const b=snap(); ALL.forEach(it=>data.counts[it.id]={open:'',closed:''}); data.date=todayShort(); data.sent=null;
   lastId=null; showResume=false; before=null;
   history.push(b); if(history.length>200) history.shift(); future=[];
   tab='metha'; save(KEYTAB,tab);
@@ -534,7 +571,11 @@ function doReset(){
   toast('Comptage remis à zéro');
 }
 $('#reset').addEventListener('click',askReset);
-$('#modal-box').addEventListener('click',e=>{ if(e.target.closest('#reset-yes')) doReset(); if(e.target.closest('#do-install')) promptInstall(); });
+$('#modal-box').addEventListener('click',e=>{
+  if(e.target.closest('#reset-yes') || e.target.closest('#newday-reset')) doReset();
+  if(e.target.closest('#do-install')) promptInstall();
+  if(e.target.closest('a.wa')){ setTimeout(()=>{ closeModal(); markSent(); },50); }
+});
 
 /* ---------- Installation sur le téléphone ---------- */
 const ua=navigator.userAgent||'';
@@ -579,8 +620,22 @@ $('#install').addEventListener('click',showHowto);
 $('#howto-link').addEventListener('click',showHowto);
 
 /* ---------- Événements de saisie ---------- */
-let before=null;
-main.addEventListener('focusin',e=>{ if(e.target.dataset.f){ before=snap(); setTimeout(()=>e.target.select&&e.target.select(),0); } if(e.target.dataset.sf) setTimeout(()=>e.target.select&&e.target.select(),0); });
+let before=null, activeInput=null;
+const nextBtn=$('#nextbtn');
+function goNext(from){
+  const ins=[...main.querySelectorAll('input[data-f]')].filter(x=>!x.hidden && !x.disabled);
+  const i=ins.indexOf(from);
+  if(ins[i+1]) ins[i+1].focus(); else { from.blur(); nextBtn.textContent='Suivant ›'; }
+}
+nextBtn.addEventListener('mousedown',e=>e.preventDefault());
+nextBtn.addEventListener('touchstart',e=>e.preventDefault(),{passive:false});
+nextBtn.addEventListener('click',()=>{ if(activeInput) goNext(activeInput); });
+main.addEventListener('focusin',e=>{
+  if(e.target.dataset.f){ before=snap(); activeInput=e.target; nextBtn.hidden=false;
+    const ins=[...main.querySelectorAll('input[data-f]')].filter(x=>!x.hidden && !x.disabled); nextBtn.textContent = ins.indexOf(e.target)===ins.length-1 ? 'Terminé ✓' : 'Suivant ›';
+    setTimeout(()=>e.target.select&&e.target.select(),0); }
+  if(e.target.dataset.sf) setTimeout(()=>e.target.select&&e.target.select(),0);
+});
 main.addEventListener('input',e=>{
   const el=e.target;
   if(el.dataset.f){
@@ -600,6 +655,7 @@ main.addEventListener('input',e=>{
   }
 });
 main.addEventListener('focusout',e=>{
+  if(e.target.dataset.f){ activeInput=null; setTimeout(()=>{ if(!activeInput) nextBtn.hidden=true; },120); }
   if(e.target.dataset.f && before!==null){ pushHistory(before); before=null; }
   if(e.target.dataset.f==='closed') syncChips(e.target.dataset.id);
   if(e.target.dataset.sf==='per'){
@@ -614,8 +670,8 @@ main.addEventListener('focusout',e=>{
 main.addEventListener('keydown',e=>{
   if(e.key==='Enter' && e.target.matches('input.num')){
     e.preventDefault();
-    const ins=[...main.querySelectorAll(e.target.dataset.f?'input[data-f]':'input[data-sf]')].filter(x=>!x.hidden);
-    const i=ins.indexOf(e.target);
+    if(e.target.dataset.f){ goNext(e.target); return; }
+    const ins=[...main.querySelectorAll('input[data-sf]')]; const i=ins.indexOf(e.target);
     if(ins[i+1]) ins[i+1].focus(); else e.target.blur();
   }
 });
@@ -631,7 +687,23 @@ main.addEventListener('click',e=>{
     return;
   }
   if(e.target.closest('[data-resume-ok]')){ showResume=false; render(); return; }
-  if(e.target.closest('[data-resume-new]')){ askReset(); return; }
+  if(e.target.closest('[data-resume-new]')){ askNewDay(); return; }
+  if(e.target.closest('[data-unlock]')){ data.sent=null; persist(); render(); toast('Saisies déverrouillées'); return; }
+  const wa=e.target.closest('a.wa');
+  if(wa){
+    const iss=issues();
+    if(iss.length){ e.preventDefault();
+      openModal(`<h3 id="modal-title">Vérifier avant d'envoyer</h3>
+        <p>${iss.length} point${iss.length>1?'s':''} à regarder :</p>
+        <ul class="issues">${iss.map(x=>`<li>${x}</li>`).join('')}</ul>
+        <div class="btns">
+          <button class="primary" data-close data-autofocus>Compléter d'abord</button>
+          <a class="wa" href="${waHref()}" target="_blank" rel="noopener">${waIcon}Envoyer quand même</a>
+        </div>`);
+      return;
+    }
+    setTimeout(markSent,50); return;
+  }
   const more=e.target.closest('[data-more]');
   if(more){ const inp=$('#c-'+more.dataset.id); inp.hidden=false; more.setAttribute('aria-pressed','true'); inp.focus(); return; }
   const go=e.target.closest('[data-goto]'); if(go){ setTab(go.dataset.goto); return; }
@@ -679,7 +751,7 @@ document.addEventListener('keydown',e=>{
 setInterval(persist,10000);
 function checkDay(){
   const d=new Date().toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});
-  if($('#date').textContent!==d){ $('#date').textContent=d; if(resumedNow() && data.date!==todayShort()){ showResume=true; render(); } }
+  if($('#date').textContent!==d){ $('#date').textContent=d; if(resumedNow() && data.date!==todayShort() && $('#modal').hidden){ showResume=true; render(); askNewDay(); } }
 }
 function resumedNow(){ return ALL.some(it=>{ const c=data.counts[it.id]; return c.open!==''||c.closed!==''; }); }
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') persist(); else checkDay(); });
@@ -695,7 +767,8 @@ if('serviceWorker' in navigator && location.protocol==='https:'){
 if(data.tab && ORDER.includes(data.tab)) tab=data.tab;
 render();
 persist();
-if(showResume && lastId){ const el=main.querySelector(`.item[data-id="${lastId}"]`); if(el) setTimeout(()=>el.scrollIntoView({block:'center'}),50); }
+if(showResume && data.date!==todayShort()) askNewDay();
+else if(showResume && lastId){ const el=main.querySelector(`.item[data-id="${lastId}"]`); if(el) setTimeout(()=>el.scrollIntoView({block:'center'}),50); }
 })();
 </script>
 </body>

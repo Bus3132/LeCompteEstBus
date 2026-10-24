@@ -13,6 +13,10 @@ Appli de comptage quotidien des TSO (traitements de substitution aux opiacés) p
 - Tableau de ce qui reste, envoi en un clic sur WhatsApp, copie du texte.
 - **Annuler / Rétablir** sans limite.
 - **Remise à zéro** toujours visible en haut, avec une demande de confirmation. On peut encore faire « Annuler » après.
+- **Nouveau jour** : à l'ouverture un autre jour, l'appli propose un nouveau comptage (ou de reprendre l'ancien).
+- **Vérification avant l'envoi** : si des dosages manquent ou sont à vérifier, l'appli les liste avant d'ouvrir WhatsApp.
+- **Verrouillage après envoi** : une fois envoyé, le comptage passe en lecture seule ; « Modifier » le déverrouille.
+- Bouton **Suivant** en haut pendant la saisie (le pavé numérique iPhone n'a pas de touche Entrée).
 - Sauvegarde automatique et reprise après une coupure.
 - Fonctionne aussi sans réseau une fois installée.
 
