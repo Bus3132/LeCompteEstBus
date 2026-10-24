@@ -1,12 +1,11 @@
 {
   "name": "Le compte est bus — Comptage des TSO",
-  "short_name": "Compte est bus",
+  "short_name": "Compte bus",
   "description": "Comptage quotidien de la méthadone, de la buprénorphine et de l'Orobupré au Bus 31/32.",
   "lang": "fr",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "orientation": "portrait",
   "background_color": "#ffffff",
   "theme_color": "#0d2a5e",
   "icons": [

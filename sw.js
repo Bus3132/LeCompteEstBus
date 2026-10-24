@@ -1,6 +1,7 @@
 // Le compte est bus — permet d'ouvrir l'appli même sans réseau.
 // Toujours la version en ligne d'abord ; la copie en cache sert seulement hors connexion.
-const CACHE = 'compte-est-bus-v4';
+const CACHE = 'compte-est-bus-v5';
+const TIMEOUT_MS = 3500; // au-delà, on sert la copie locale (réseau faible dans le bus)
 const FILES = [
   './',
   './index.html',
@@ -39,15 +40,16 @@ self.addEventListener('fetch', e => {
   const isFont = url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com';
   if (!sameOrigin && !isFont) return;
 
+  const cached = () => caches.match(req).then(r => r || (req.mode === 'navigate' ? caches.match('./index.html') : undefined));
+  const network = fetch(req).then(res => {
+    const sameHost = (() => { try { return new URL(res.url).origin === self.location.origin; } catch (e) { return false; } })();
+    const cacheable = res && res.ok && !res.redirected && (sameHost || isFont || res.type === 'opaque');
+    if (cacheable) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
+    return res;
+  });
+  const timeout = new Promise(resolve => setTimeout(() => resolve(null), TIMEOUT_MS));
   e.respondWith(
-    fetch(req)
-      .then(res => {
-        if (res && (res.ok || res.type === 'opaque')) {
-          const copy = res.clone();
-          caches.open(CACHE).then(c => c.put(req, copy));
-        }
-        return res;
-      })
-      .catch(() => caches.match(req).then(r => r || (req.mode === 'navigate' ? caches.match('./index.html') : undefined)))
+    Promise.race([network.catch(() => null), timeout])
+      .then(res => (res && (res.ok || res.type === 'opaque')) ? res : cached().then(c => c || res || Response.error()))
   );
 });

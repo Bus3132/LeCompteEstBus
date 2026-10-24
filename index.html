@@ -71,6 +71,7 @@ header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var
 .tbtn svg{width:18px;height:18px;flex:0 0 auto}
 .tbtn.reset{margin-left:auto;color:var(--danger);border-color:color-mix(in srgb,var(--danger) 35%,var(--line))}
 @media (max-width:400px){ .tbtn .opt{display:none} }
+@media (max-width:360px){ .tbtn#undo span{display:none} }
 .tabs{display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:3px;gap:3px}
 .tabs button{border:0;background:transparent;border-radius:9px;padding:9px 2px;font-size:14px;font-weight:700;display:flex;justify-content:center;align-items:center;gap:5px;min-width:0}
 .tabs button[aria-selected="true"]{background:var(--g,var(--navy));color:var(--on-g,#fff)}
@@ -104,7 +105,7 @@ main{padding-top:14px}
 .cols.c3,.row.c3{grid-template-columns:minmax(72px,1.1fr) 1fr minmax(72px,1fr)}
 .cols{padding-block:8px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line)}
 .cols span:last-child{text-align:right}
-.item{border-bottom:1px solid var(--line);padding-block:10px 8px;display:grid;gap:6px;background:color-mix(in srgb,var(--dc,var(--g)) 15%,#ffffff)}
+.item{border-bottom:1px solid var(--line);padding-block:10px 8px;display:grid;gap:6px;background:#f6f7fa;background:color-mix(in srgb,var(--dc,var(--g)) 15%,#ffffff)}
 .item:last-child{border-bottom:0}
 .item.here{box-shadow:inset 0 0 0 3px var(--navy)}
 .dose{font-weight:700;font-size:17px;line-height:1.1;border-left:6px solid var(--dc,var(--g));padding-left:8px;display:flex;align-items:center;gap:7px;color:var(--navy)}
@@ -130,7 +131,7 @@ input.num.bad{border-color:var(--warn)}
 .chip:not([aria-pressed="true"]):hover{border-color:var(--dc,var(--g))}
 .chips input.num{flex:0 0 76px;height:42px;font-size:18px}
 
-details.settings{background:var(--surface);border:1px solid var(--line);border-radius:14px}
+details.settings{scroll-margin-top:150px;background:var(--surface);border:1px solid var(--line);border-radius:14px}
 details.settings summary{padding:12px 14px;cursor:pointer;font-weight:700;font-size:15px;color:var(--navy)}
 .setgrid{display:grid;grid-template-columns:1fr 88px 88px;gap:8px 10px;align-items:center;padding:0 14px 14px}
 .setgrid .h{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
@@ -168,7 +169,7 @@ textarea.copyfb{width:100%;height:180px;font-family:var(--f-num);font-size:13px;
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--navy);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:30;max-width:calc(100% - 32px)}
 
 /* ---------- Fenêtres (remise à zéro, installation) ---------- */
-.overlay{position:fixed;inset:0;z-index:20;background:color-mix(in srgb,var(--navy) 55%,transparent);display:grid;place-items:center;
+.overlay{position:fixed;inset:0;z-index:20;background:rgba(13,42,94,.55);background:color-mix(in srgb,var(--navy) 55%,transparent);display:grid;place-items:center;
   padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
 .dialog{background:var(--surface);border-radius:18px;width:100%;max-width:420px;max-height:100%;overflow:auto;padding:20px;display:grid;gap:14px;box-shadow:0 24px 60px -20px #000}
 .dialog h3{margin:0;font-size:21px;color:var(--navy);text-wrap:balance}
@@ -245,7 +246,7 @@ footer button{border:0;background:transparent;color:var(--blue);text-decoration:
 <div class="overlay" id="modal" hidden>
   <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="modal-title" id="modal-box"></div>
 </div>
-<div class="toast" id="toast" hidden></div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <script>
 (function(){
@@ -283,17 +284,21 @@ function save(k,v){ try{ const t=JSON.stringify(v); localStorage.setItem(k,t); r
 let saveOK=true, savedAt=null;
 
 // Reprise : on lit la sauvegarde, et la copie de secours si elle est abîmée
+function n(v){ return v===''||v==null ? 0 : parseInt(v,10)||0; }
+const isObj=x=>x && typeof x==='object' && !Array.isArray(x);
 let data = load(KEY,null);
-if(!data || !data.counts) data = load(KEYBAK,null);
-const resumed = !!(data && data.counts && Object.values(data.counts).some(c=>c && (c.open!==''||c.closed!=='')));
-if(!data || !data.counts) data = { date: todayShort(), counts:{} };
+if(!isObj(data) || !isObj(data.counts)) data = load(KEYBAK,null);
+if(!isObj(data) || !isObj(data.counts)) data = { date: todayShort(), counts:{} };
+if(typeof data.date!=='string') data.date = todayShort();
+ALL.forEach(it=>{ const c=data.counts[it.id]; if(!isObj(c)) data.counts[it.id]={open:'',closed:''}; else { c.open=String(c.open??'').replace(/\D/g,''); c.closed=String(c.closed??'').replace(/\D/g,''); } });
+const resumed = ALL.some(it=>{ const c=data.counts[it.id]; return c.open!==''||c.closed!==''; });
 
 // Réglages : chiffres camion par défaut appliqués une seule fois, ensuite ceux de l'appareil sont gardés
-let settings = load(KEYSET,{}) || {};
+let settings = load(KEYSET,{}); if(!isObj(settings)) settings={};
 const applyCamionDefaults = load(KEYCAMIONV2,false) !== true;
 ALL.forEach(it=>{
-  if(!data.counts[it.id]) data.counts[it.id]={open:'',closed:''};
-  if(!settings[it.id]) settings[it.id]={fixed:DEFAULT_CAMION[it.id]??0, per:it.g.per};
+  if(!isObj(settings[it.id])) settings[it.id]={fixed:DEFAULT_CAMION[it.id]??0, per:it.g.per};
+  settings[it.id].fixed=n(settings[it.id].fixed); settings[it.id].per=n(settings[it.id].per);
   if(applyCamionDefaults) settings[it.id].fixed = DEFAULT_CAMION[it.id] ?? 0;
   if(!(settings[it.id].per>0)) settings[it.id].per = it.g.per;
 });
@@ -301,31 +306,36 @@ if(applyCamionDefaults){ save(KEYSET,settings); save(KEYCAMIONV2,true); }
 
 let tab = load(KEYTAB,'metha'); if(!ORDER.includes(tab)) tab='metha';
 const h0=load(KEYHIST,null);
-let history=(h0&&h0.history)||[], future=(h0&&h0.future)||[];
+let history=(isObj(h0)&&Array.isArray(h0.history))?h0.history.filter(x=>typeof x==='string'):[];
+let future=(isObj(h0)&&Array.isArray(h0.future))?h0.future.filter(x=>typeof x==='string'):[];
 let lastId=data.last||null, showResume=resumed;
 
 const $=s=>document.querySelector(s);
 const main=$('#main');
 $('#date').textContent = new Date().toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});
 
-function n(v){ return v===''||v==null ? 0 : parseInt(v,10)||0; }
 function filled(id){ const c=data.counts[id]; return c.open!=='' || c.closed!==''; }
 function total(id){ const c=data.counts[id], s=settings[id]; return n(c.open) + n(c.closed)*s.per + n(s.fixed); }
+let lastSnap=null;
 function persist(){
-  data.saved=Date.now(); data.last=lastId; data.tab=tab;
+  const cur=snap(), changed = cur!==lastSnap;
+  if(changed && lastSnap!==null) data.saved=Date.now();
+  lastSnap=cur; data.last=lastId; data.tab=tab;
   const ok1=save(KEY,data), ok2=save(KEYBAK,data);
   save(KEYHIST,{history:history.slice(-60),future:future.slice(-60)});
-  saveOK = ok1||ok2; if(saveOK) savedAt=new Date(data.saved);
-  updateStatus(); updateChrome();
+  const wasOK=saveOK; saveOK = ok1||ok2;
+  if(saveOK && changed && data.saved) savedAt=new Date(data.saved);
+  if(changed || wasOK!==saveOK) updateStatus();
+  updateChrome();
 }
-function hhmm(d){ return d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+function hhmm(d){ return d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }
 function updateStatus(){
   const st=$('#status'), tx=$('#status-txt');
   st.classList.toggle('ko',!saveOK);
   tx.textContent = !saveOK ? 'Sauvegarde impossible sur ce navigateur : ne fermez pas la page avant d\'avoir envoyé le résultat.'
-    : savedAt ? 'Enregistré automatiquement à '+hhmm(savedAt) : 'Enregistrement automatique activé';
+    : savedAt ? 'Dernière saisie enregistrée à '+hhmm(savedAt) : 'Enregistrement automatique activé';
 }
-function snap(){ return JSON.stringify(data.counts); }
+function snap(){ return JSON.stringify({c:data.counts,d:data.date}); }
 function pushHistory(before){ if(before===snap()) return; history.push(before); if(history.length>200) history.shift(); future=[]; persist(); }
 function toast(msg){ const t=$('#toast'); t.textContent=msg; t.hidden=false; clearTimeout(toast._t); toast._t=setTimeout(()=>t.hidden=true,2400); }
 
@@ -343,6 +353,7 @@ function updateChrome(){
 const inputAttrs='inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" autocomplete="off"';
 
 /* ---------- Saisie ---------- */
+function groupHead(g){ const pers=[...new Set(g.items.map(it=>settings[it.id].per))]; return pers.length===1 ? `1 ${g.container} = ${pers[0]} ${g.unit}` : `${g.unit} par ${g.container} : voir réglages`; }
 function renderGroup(g){
   const unset = g.items.filter(it=>!n(settings[it.id].fixed)).length;
   const nextTab = ORDER[ORDER.indexOf(g.id)+1];
@@ -351,7 +362,7 @@ function renderGroup(g){
   main.innerHTML = `
   <section class="panel ${g.id}">
     ${resumeBanner()}
-    <div class="ghead"><h2><span class="pill">${g.short}</span>${g.name}</h2><p>1 ${g.container} = ${g.per} ${g.unit}</p></div>
+    <div class="ghead"><h2><span class="pill">${g.short}</span>${g.name}</h2><p>${groupHead(g)}</p></div>
     ${unset===g.items.length ? `<div class="notice"><span>Le nombre « camion » n'est pas réglé (compté 0).</span><button data-open-settings>Régler</button></div>`:''}
     <div class="list">
       <div class="cols ${c3}"><span>Dosage</span><span>${g.openLbl}</span>${g.chips?'':`<span>${g.closedLbl}</span>`}<span>Reste</span></div>
@@ -380,7 +391,7 @@ function renderGroup(g){
         ${g.items.map(it=>`
           <span class="lbl">${it.label}<small>par défaut : ${DEFAULT_CAMION[it.id]??0}</small></span>
           <input class="num${n(settings[it.id].fixed)!==(DEFAULT_CAMION[it.id]??0)?' changed':''}" id="sf-${it.id}" data-sid="${it.id}" data-sf="fixed" ${inputAttrs} value="${settings[it.id].fixed??''}" placeholder="0" aria-label="${it.sub} ${it.label} — nombre camion">
-          <input class="num" id="sp-${it.id}" data-sid="${it.id}" data-sf="per" ${inputAttrs} value="${settings[it.id].per}" aria-label="${it.sub} ${it.label} — ${g.unit} par ${g.container}">
+          <input class="num${settings[it.id].per!==g.per?' changed':''}" id="sp-${it.id}" data-sid="${it.id}" data-sf="per" ${inputAttrs} value="${settings[it.id].per}" aria-label="${it.sub} ${it.label} — ${g.unit} par ${g.container}">
         `).join('')}
         <div class="foot">
           <p>Touchez un chiffre pour le changer : il est enregistré tout de suite sur ce téléphone et gardé d'un jour à l'autre. Le nombre camion est ajouté au total de chaque dosage.</p>
@@ -400,7 +411,8 @@ function syncChips(id){
   item.querySelectorAll('[data-chip]').forEach(b=>b.setAttribute('aria-pressed', v!=='' && n(v)===+b.dataset.chip));
   const more=item.querySelector('[data-more]'), inp=$('#c-'+id);
   if(big) inp.hidden=false;
-  more.setAttribute('aria-pressed', !inp.hidden);
+  else if(v!=='' && document.activeElement!==inp) inp.hidden=true;
+  more.setAttribute('aria-pressed', big);
 }
 
 function refreshRow(id){
@@ -412,7 +424,8 @@ function refreshRow(id){
   let txt = `${n(c.open)} + ${n(c.closed)} × ${s.per} + ${n(s.fixed)} camion = ${total(id)}`;
   let warn='';
   if(g.chips && n(c.open)>=s.per) warn = ` <span class="w">${g.container} ouvert ≥ ${s.per} : à vérifier</span>`;
-  else if(g.chips && c.open!=='' && c.closed==='') warn = ` <span class="w">${g.closedLbl.toLowerCase()} ?</span>`;
+  else if(c.open!=='' && c.closed==='') warn = ` <span class="w">${g.closedLbl.toLowerCase()} ?</span>`;
+  else if(c.open==='' && c.closed!=='') warn = ` <span class="w">${g.openLbl.toLowerCase()} ?</span>`;
   o&&o.classList.toggle('bad', !!g.chips && n(c.open)>=s.per);
   f.innerHTML = txt + warn;
 }
@@ -482,9 +495,21 @@ function openModal(html){
   lastFocus=document.activeElement;
   if(lastFocus && lastFocus.blur) lastFocus.blur();
   $('#modal-box').innerHTML=html; $('#modal').hidden=false;
+  document.querySelector('.wrap').inert=true; document.body.style.overflow='hidden';
   const f=$('#modal-box [data-autofocus]')||$('#modal-box button'); if(f) f.focus();
 }
-function closeModal(){ $('#modal').hidden=true; $('#modal-box').innerHTML=''; }
+function closeModal(){
+  $('#modal').hidden=true; $('#modal-box').innerHTML='';
+  document.querySelector('.wrap').inert=false; document.body.style.overflow='';
+  if(lastFocus && lastFocus.focus && !(lastFocus.dataset&&lastFocus.dataset.f)) lastFocus.focus();
+}
+$('#modal').addEventListener('keydown',e=>{
+  if(e.key!=='Tab') return;
+  const f=[...$('#modal-box').querySelectorAll('button,[href],input,[tabindex]:not([tabindex="-1"])')].filter(x=>!x.disabled);
+  if(!f.length) return; const first=f[0], last=f[f.length-1];
+  if(e.shiftKey && document.activeElement===first){ e.preventDefault(); last.focus(); }
+  else if(!e.shiftKey && document.activeElement===last){ e.preventDefault(); first.focus(); }
+});
 $('#modal').addEventListener('click',e=>{ if(e.target.id==='modal' || e.target.closest('[data-close]')) closeModal(); });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape' && !$('#modal').hidden) closeModal(); });
 
@@ -568,15 +593,22 @@ main.addEventListener('input',e=>{
   } else if(el.dataset.sf){
     const clean=el.value.replace(/\D/g,'').slice(0,4); if(clean!==el.value) el.value=clean;
     const id=el.dataset.sid, s=settings[id];
-    if(el.dataset.sf==='per'){ if(n(clean)>0) s.per=n(clean); }
-    else { s.fixed=n(clean); el.classList.toggle('changed', s.fixed!==(DEFAULT_CAMION[id]??0)); }
+    if(el.dataset.sf==='per') return; // appliqué à la sortie du champ (évite 7 au lieu de 70)
+    s.fixed=n(clean); el.classList.toggle('changed', s.fixed!==(DEFAULT_CAMION[id]??0));
     if(!save(KEYSET,settings)){ saveOK=false; updateStatus(); }
     refreshRow(id);
   }
 });
 main.addEventListener('focusout',e=>{
   if(e.target.dataset.f && before!==null){ pushHistory(before); before=null; }
-  if(e.target.dataset.sf==='per' && !(n(e.target.value)>0)){ e.target.value=settings[e.target.dataset.sid].per; }
+  if(e.target.dataset.f==='closed') syncChips(e.target.dataset.id);
+  if(e.target.dataset.sf==='per'){
+    const id=e.target.dataset.sid, s=settings[id], g=ALL.find(x=>x.id===id).g, v=n(e.target.value);
+    const old=s.per; if(v>0) s.per=v; e.target.value=s.per; e.target.classList.toggle('changed', s.per!==g.per);
+    if(s.per!==old) toast(`${ALL.find(x=>x.id===id).label} : ${s.per} ${g.unit} par ${g.container}`);
+    if(!save(KEYSET,settings)){ saveOK=false; updateStatus(); }
+    refreshRow(id); const hp=main.querySelector('.ghead p'); if(hp) hp.textContent=groupHead(g);
+  }
   if(e.target.dataset.sf==='fixed' && e.target.value===''){ e.target.value=settings[e.target.dataset.sid].fixed; }
 });
 main.addEventListener('keydown',e=>{
@@ -623,21 +655,35 @@ function copyResult(){
 function setTab(t){ tab=t; save(KEYTAB,t); persist(); render(); window.scrollTo({top:0}); }
 document.querySelector('.tabs').addEventListener('click',e=>{ const b=e.target.closest('[data-tab]'); if(b) setTab(b.dataset.tab); });
 
-function restore(json){ data.counts=JSON.parse(json); persist(); render(); }
-function undo(){ const a=document.activeElement; if(a && a.dataset && a.dataset.f) a.blur();
-  if(!history.length) return; future.push(snap()); restore(history.pop()); toast('Saisie annulée'); }
-function redo(){ if(!future.length) return; history.push(snap()); restore(future.pop()); toast('Saisie rétablie'); }
+function restore(json){
+  let o; try{ o=JSON.parse(json); }catch(e){ return; }
+  if(isObj(o) && isObj(o.c)){ data.counts=o.c; if(typeof o.d==='string') data.date=o.d; }
+  else if(isObj(o)) data.counts=o; // ancien format
+  ALL.forEach(it=>{ if(!isObj(data.counts[it.id])) data.counts[it.id]={open:'',closed:''}; });
+  if(data.date!==todayShort()) showResume=true;
+  persist(); render();
+}
+function blurCount(){ const a=document.activeElement; if(a && a.dataset && a.dataset.f) a.blur(); }
+function undo(){ blurCount(); if(!history.length) return; future.push(snap()); restore(history.pop()); toast('Saisie annulée'); }
+function redo(){ blurCount(); if(!future.length) return; history.push(snap()); restore(future.pop()); toast('Saisie rétablie'); }
 $('#undo').addEventListener('click',undo);
 $('#redo').addEventListener('click',redo);
 document.addEventListener('keydown',e=>{
   if(!$('#modal').hidden) return;
+  if(document.activeElement && document.activeElement.dataset && document.activeElement.dataset.sf) return;
   if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='z' && !e.shiftKey){ e.preventDefault(); undo(); }
   else if((e.ctrlKey||e.metaKey) && (e.key.toLowerCase()==='y' || (e.shiftKey && e.key.toLowerCase()==='z'))){ e.preventDefault(); redo(); }
 });
 
 // Sauvegarde de sécurité : toutes les 10 s, quand l'appli passe en arrière-plan, et en cas d'erreur
 setInterval(persist,10000);
-document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') persist(); });
+function checkDay(){
+  const d=new Date().toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});
+  if($('#date').textContent!==d){ $('#date').textContent=d; if(resumedNow() && data.date!==todayShort()){ showResume=true; render(); } }
+}
+function resumedNow(){ return ALL.some(it=>{ const c=data.counts[it.id]; return c.open!==''||c.closed!==''; }); }
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') persist(); else checkDay(); });
+setInterval(checkDay,60000);
 window.addEventListener('pagehide',persist);
 window.addEventListener('error',()=>{ try{ persist(); }catch(e){} });
 
