@@ -516,16 +516,38 @@ function render(){
   markHere(); updateChrome();
 }
 
+/* ---------- Bouton Précédent du téléphone ----------
+   Chaque onglet et chaque fenêtre ajoute une étape à l'historique du navigateur :
+   Précédent ferme la fenêtre ouverte, sinon revient à l'onglet d'avant.
+   Sur le premier onglet, un premier appui prévient, le second quitte. */
+const NAV=window.history;
+let modalPushed=false, pendingBack=false, queuedModal=false, exitArmed=false, exitTimer=null;
+function navPush(state){ try{ NAV.pushState(state,''); }catch(e){} }
+window.addEventListener('popstate',e=>{
+  const st=e.state||{};
+  if(pendingBack){ pendingBack=false; if(queuedModal){ queuedModal=false; navPush({cb:'modal'}); modalPushed=true; } return; }
+  if(!$('#modal').hidden){ modalPushed=false; closeModal(true); return; }
+  if(st.cb==='app'){ exitArmed=false; if(ORDER.includes(st.tab) && st.tab!==tab) setTab(st.tab,true); return; }
+  // arrivé au tout début : on prévient avant de quitter
+  if(!exitArmed){
+    exitArmed=true; toast('Appuyez encore sur Précédent pour quitter l\'appli');
+    clearTimeout(exitTimer);
+    exitTimer=setTimeout(()=>{ if(exitArmed){ exitArmed=false; navPush({cb:'app',tab}); } },2500);
+  }
+});
+
 /* ---------- Fenêtres ---------- */
 let lastFocus=null;
 function openModal(html){
+  if(!modalPushed){ if(pendingBack) queuedModal=true; else { navPush({cb:'modal'}); modalPushed=true; } }
   lastFocus=document.activeElement;
   if(lastFocus && lastFocus.blur) lastFocus.blur();
   $('#modal-box').innerHTML=html; $('#modal').hidden=false;
   document.querySelector('.wrap').inert=true; document.body.style.overflow='hidden';
   const f=$('#modal-box [data-autofocus]')||$('#modal-box button'); if(f) f.focus();
 }
-function closeModal(){
+function closeModal(fromBack){
+  if(!fromBack && modalPushed){ modalPushed=false; pendingBack=true; try{ NAV.back(); }catch(e){ pendingBack=false; } }
   $('#modal').hidden=true; $('#modal-box').innerHTML='';
   document.querySelector('.wrap').inert=false; document.body.style.overflow='';
   if(lastFocus && lastFocus.focus && !(lastFocus.dataset&&lastFocus.dataset.f)) lastFocus.focus();
@@ -724,7 +746,7 @@ function copyResult(){
   try{ navigator.clipboard.writeText(txt).then(()=>toast('Résultat copié'),fallback); }catch(err){ fallback(); }
 }
 
-function setTab(t){ tab=t; save(KEYTAB,t); persist(); render(); window.scrollTo({top:0}); }
+function setTab(t,fromBack){ if(!fromBack && t!==tab){ exitArmed=false; navPush({cb:'app',tab:t}); } tab=t; save(KEYTAB,t); persist(); render(); window.scrollTo({top:0}); }
 document.querySelector('.tabs').addEventListener('click',e=>{ const b=e.target.closest('[data-tab]'); if(b) setTab(b.dataset.tab); });
 
 function restore(json){
@@ -765,6 +787,8 @@ if('serviceWorker' in navigator && location.protocol==='https:'){
 }
 
 if(data.tab && ORDER.includes(data.tab)) tab=data.tab;
+try{ NAV.replaceState({cb:'base'},''); }catch(e){}
+navPush({cb:'app',tab});
 render();
 persist();
 if(showResume && data.date!==todayShort()) askNewDay();
