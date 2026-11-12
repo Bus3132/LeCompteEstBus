@@ -145,7 +145,6 @@ details.settings summary{padding:12px 14px;cursor:pointer;font-weight:700;font-s
 .setgrid .lbl{font-weight:700}
 .setgrid .lbl small{display:block;font-weight:400;font-size:12px;color:var(--muted)}
 .setgrid input.num{height:40px;font-size:18px}
-.setgrid input.num.changed{border-color:var(--orange)}
 .setgrid .foot{grid-column:1/-1;display:grid;gap:8px;margin-top:4px}
 .setgrid .foot p{margin:0;font-size:13px;color:var(--muted)}
 .linkbtn{justify-self:start;border:1px solid var(--line);background:var(--field);border-radius:10px;padding:8px 12px;font-weight:700;font-size:14px;color:var(--navy)}
@@ -259,12 +258,10 @@ footer button{border:0;background:transparent;color:var(--blue);text-decoration:
 <script>
 (function(){
 /* ======================================================================
-   CHIFFRES CAMION DE L'ÉQUIPE — à modifier ici si le remplissage du camion change.
-   Dès que ce fichier est enregistré sur GitHub, TOUS les téléphones prennent
-   ces chiffres à leur prochaine ouverture (avec du réseau), et un message
-   « Chiffres camion mis à jour » s'affiche.
-   Une modification faite dans « Réglages » sur un téléphone ne vaut que pour
-   ce téléphone, jusqu'à la prochaine mise à jour de ce fichier.
+   CHIFFRES CAMION DE DÉPART — utilisés seulement par un téléphone neuf qui
+   n'a pas encore de réseau. Les vrais chiffres de l'équipe sont en ligne
+   (base Supabase, table comptebus_reglages) : chacun peut les changer depuis
+   « Réglages » dans l'appli, et le changement vaut pour tous les téléphones.
    ====================================================================== */
 const DEFAULT_CAMION = {
   m5:20, m10:34, m20:20, m40:40, m60:40,          // Méthadone (flacons)
@@ -287,7 +284,8 @@ const ORDER=['metha','bupre','oro','res'];
 const ALL = GROUPS.flatMap(g=>g.items.map(it=>({...it, g})));
 
 const KEY='csapa-comptage-v1', KEYSET='csapa-reglages-v1', KEYTAB='csapa-onglet';
-const KEYBAK=KEY+'-copie', KEYHIST='csapa-historique-v1', KEYCAMIONREF='csapa-chiffres-equipe';
+const KEYBAK=KEY+'-copie', KEYHIST='csapa-historique-v1', KEYTEAMTS='csapa-chiffres-equipe-date';
+const TEAM_URL='https://zsgekjidtzwypjssglbx.supabase.co/rest/v1', TEAM_KEY='sb_publishable_H-6I3DxUjDAq8H03OgxusA_9C0DB9HS';
 function todayShort(){ return new Date().toLocaleDateString('fr-FR'); }
 function load(k,def){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch(e){ return def; } }
 function save(k,v){ try{ const t=JSON.stringify(v); localStorage.setItem(k,t); return localStorage.getItem(k)===t; }catch(e){ return false; } }
@@ -303,24 +301,14 @@ if(typeof data.date!=='string') data.date = todayShort();
 ALL.forEach(it=>{ const c=data.counts[it.id]; if(!isObj(c)) data.counts[it.id]={open:'',closed:''}; else { c.open=String(c.open??'').replace(/\D/g,''); c.closed=String(c.closed??'').replace(/\D/g,''); } });
 const resumed = ALL.some(it=>{ const c=data.counts[it.id]; return c.open!==''||c.closed!==''; });
 
-// Réglages : les chiffres de l'équipe (ci-dessus) s'imposent à tous les téléphones
-// chaque fois qu'ils changent dans le fichier. Entre deux mises à jour, un téléphone
-// peut les modifier localement (dépannage).
+// Réglages : chiffres gardés sur le téléphone, puis alignés sur ceux de l'équipe (en ligne) dès qu'il y a du réseau
 let settings = load(KEYSET,{}); if(!isObj(settings)) settings={};
-const teamRef = JSON.stringify(ALL.map(it=>[it.id, DEFAULT_CAMION[it.id]??0, it.g.per]));
-const teamChanged = load(KEYCAMIONREF,null) !== teamRef;
-let camionUpdated = false;
 ALL.forEach(it=>{
   if(!isObj(settings[it.id])) settings[it.id]={fixed:DEFAULT_CAMION[it.id]??0, per:it.g.per};
   const s=settings[it.id]; s.fixed=n(s.fixed); s.per=n(s.per);
   if(!(s.per>0)) s.per = it.g.per;
-  if(teamChanged){
-    const f=DEFAULT_CAMION[it.id]??0;
-    if(s.fixed!==f || s.per!==it.g.per) camionUpdated = true;
-    s.fixed=f; s.per=it.g.per;
-  }
 });
-if(teamChanged){ save(KEYSET,settings); save(KEYCAMIONREF,teamRef); }
+let teamTs = load(KEYTEAMTS,null), teamOnline = null; // null = pas encore essayé
 
 let tab = load(KEYTAB,'metha'); if(!ORDER.includes(tab)) tab='metha';
 const h0=load(KEYHIST,null);
@@ -387,6 +375,66 @@ function issues(){
   return out;
 }
 
+/* ---------- Chiffres de l'équipe (en ligne) ---------- */
+function teamInfo(){
+  const d = teamTs ? 'Dernier changement : '+new Date(teamTs).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})+'.' : '';
+  return teamOnline===false ? 'Pas de réseau : ces chiffres ne sont peut-être pas les derniers. '+d : d;
+}
+function teamFetch(path,opts){
+  const ctl=new AbortController(), t=setTimeout(()=>ctl.abort(),7000);
+  return fetch(TEAM_URL+path,{...opts,signal:ctl.signal,cache:'no-store',headers:{apikey:TEAM_KEY,'Content-Type':'application/json',...(opts&&opts.headers)}})
+    .then(r=>{ if(!r.ok) throw new Error('http '+r.status); return r.json(); }).finally(()=>clearTimeout(t));
+}
+function applyTeam(row,quiet){
+  if(!isObj(row) || !isObj(row.data)) return false;
+  let changed=false;
+  ALL.forEach(it=>{ const r=row.data[it.id]; if(!isObj(r)) return;
+    const f=n(r.fixed), p=n(r.per)>0?n(r.per):it.g.per, s=settings[it.id];
+    if(s.fixed!==f || s.per!==p){ s.fixed=f; s.per=p; changed=true; } });
+  teamOnline=true; if(typeof row.updated_at==='string'){ teamTs=row.updated_at; save(KEYTEAMTS,teamTs); }
+  if(changed){ save(KEYSET,settings); refreshSettingsView(); if(!quiet) toast('Chiffres camion mis à jour pour toute l\'équipe'); }
+  else { const ti=$('#team-info'); if(ti) ti.textContent=teamInfo(); }
+  return changed;
+}
+function refreshSettingsView(){
+  if(tab==='res'){ if($('#modal').hidden) render(); return; }
+  const g=GROUPS.find(x=>x.id===tab);
+  g.items.forEach(it=>{ const a=$('#sf-'+it.id), b=$('#sp-'+it.id);
+    if(a && document.activeElement!==a) a.value=settings[it.id].fixed; if(b && document.activeElement!==b) b.value=settings[it.id].per; refreshRow(it.id); });
+  const hp=main.querySelector('.ghead p'); if(hp) hp.textContent=groupHead(g);
+  const ti=$('#team-info'); if(ti) ti.textContent=teamInfo();
+}
+let teamBusy=false;
+function syncTeam(){
+  if(teamBusy || pendingTeam) return; teamBusy=true;
+  teamFetch('/comptebus_reglages?id=eq.1&select=data,updated_at')
+    .then(rows=>{ if(Array.isArray(rows) && rows[0]) applyTeam(rows[0]); else throw new Error('vide'); })
+    .catch(()=>{ teamOnline=false; const ti=$('#team-info'); if(ti) ti.textContent=teamInfo(); })
+    .finally(()=>{ teamBusy=false; });
+}
+let pendingTeam=null;
+function askTeamChange(id,field,value){
+  const it=ALL.find(x=>x.id===id), g=it.g, s=settings[id];
+  pendingTeam={id, fixed: field==='fixed'?value:s.fixed, per: field==='per'?value:s.per};
+  const what = field==='fixed' ? `nombre camion : <b>${s.fixed} → ${value}</b>` : `${g.unit} par ${g.container} : <b>${s.per} → ${value}</b>`;
+  openModal(`
+    <h3 id="modal-title">Êtes-vous sûr de vouloir changer pour l'ensemble de l'équipe ?</h3>
+    <p>${it.sub} ${it.label}, ${what}</p>
+    <p id="team-msg">Le nouveau chiffre s'appliquera sur tous les téléphones et changera les totaux de tout le monde.</p>
+    <div class="btns">
+      <button class="primary" id="team-yes">Oui, changer pour toute l'équipe</button>
+      <button class="secondary" data-close data-autofocus>Non, ne rien changer</button>
+    </div>`);
+}
+function sendTeamChange(){
+  const p=pendingTeam, btn=$('#team-yes'); if(!p || !btn) return;
+  btn.disabled=true; btn.textContent='Envoi…';
+  teamFetch('/rpc/comptebus_set_reglage',{method:'POST',body:JSON.stringify({p_id:p.id,p_fixed:p.fixed,p_per:p.per})})
+    .then(row=>{ if(!applyTeam(row,true) && !(isObj(row)&&isObj(row.data))) throw new Error('réponse'); pendingTeam=null; closeModal(); toast('Chiffre changé pour toute l\'équipe'); })
+    .catch(()=>{ const m=$('#team-msg'); if(m){ m.textContent='Envoi impossible (pas de réseau ?). Le chiffre n\'a pas été changé.'; m.style.color='var(--warn)'; m.style.fontWeight='700'; }
+      const b=$('#team-yes'); if(b){ b.disabled=false; b.textContent='Réessayer'; } });
+}
+
 /* ---------- Saisie ---------- */
 function groupHead(g){ const pers=[...new Set(g.items.map(it=>settings[it.id].per))]; return pers.length===1 ? `1 ${g.container} = ${pers[0]} ${g.unit}` : `${g.unit} par ${g.container} : voir réglages`; }
 function renderGroup(g){
@@ -421,18 +469,17 @@ function renderGroup(g){
       </div>`).join('')}
     </div>
     <details class="settings" id="settings">
-      <summary>Réglages : camion et contenance${g.items.some(it=>settings[it.id].fixed!==(DEFAULT_CAMION[it.id]??0)||settings[it.id].per!==g.per)?' <span class="badge">modifié ici</span>':''}</summary>
+      <summary>Réglages : camion et contenance</summary>
       <div class="setgrid">
         <span class="h">Dosage</span><span class="h">Camion</span><span class="h">Par ${g.container}</span>
         ${g.items.map(it=>`
-          <span class="lbl">${it.label}<small>équipe : ${DEFAULT_CAMION[it.id]??0}</small></span>
-          <input class="num${n(settings[it.id].fixed)!==(DEFAULT_CAMION[it.id]??0)?' changed':''}" id="sf-${it.id}" data-sid="${it.id}" data-sf="fixed" ${inputAttrs} value="${settings[it.id].fixed??''}" placeholder="0" aria-label="${it.sub} ${it.label} — nombre camion">
-          <input class="num${settings[it.id].per!==g.per?' changed':''}" id="sp-${it.id}" data-sid="${it.id}" data-sf="per" ${inputAttrs} value="${settings[it.id].per}" aria-label="${it.sub} ${it.label} — ${g.unit} par ${g.container}">
+          <span class="lbl">${it.label}</span>
+          <input class="num" id="sf-${it.id}" data-sid="${it.id}" data-sf="fixed" ${inputAttrs} value="${settings[it.id].fixed??''}" placeholder="0" aria-label="${it.sub} ${it.label} — nombre camion">
+          <input class="num" id="sp-${it.id}" data-sid="${it.id}" data-sf="per" ${inputAttrs} value="${settings[it.id].per}" aria-label="${it.sub} ${it.label} — ${g.unit} par ${g.container}">
         `).join('')}
         <div class="foot">
-          <p>Le nombre camion est ajouté au total de chaque dosage. Ces chiffres sont les mêmes pour toute l'équipe et se mettent à jour tout seuls.</p>
-          <p>Une case changée ici (en orange) ne vaut que pour ce téléphone, jusqu'à la prochaine mise à jour de l'équipe. Pour changer pour tout le monde, voir le mode d'emploi.</p>
-          <button class="linkbtn" data-defaults="${g.id}">Revenir aux chiffres de l'équipe</button>
+          <p>Le nombre camion est ajouté au total de chaque dosage. <b>Ces chiffres sont communs à toute l'équipe</b> : si vous en changez un, il change sur tous les téléphones (une confirmation est demandée).</p>
+          <p id="team-info">${teamInfo()}</p>
         </div>
       </div>
     </details>
@@ -560,6 +607,7 @@ function openModal(html){
 function closeModal(fromBack){
   if(!fromBack && modalPushed){ modalPushed=false; pendingBack=true; try{ NAV.back(); }catch(e){ pendingBack=false; } }
   $('#modal').hidden=true; $('#modal-box').innerHTML='';
+  if(pendingTeam){ pendingTeam=null; refreshSettingsView(); }
   document.querySelector('.wrap').inert=false; document.body.style.overflow='';
   if(lastFocus && lastFocus.focus && !(lastFocus.dataset&&lastFocus.dataset.f)) lastFocus.focus();
 }
@@ -607,6 +655,7 @@ $('#reset').addEventListener('click',askReset);
 $('#modal-box').addEventListener('click',e=>{
   if(e.target.closest('#reset-yes') || e.target.closest('#newday-reset')) doReset();
   if(e.target.closest('#do-install')) promptInstall();
+  if(e.target.closest('#team-yes')) sendTeamChange();
   if(e.target.closest('a.wa')){ setTimeout(()=>{ closeModal(); markSent(); },50); }
 });
 
@@ -679,26 +728,18 @@ main.addEventListener('input',e=>{
     persist(); refreshRow(el.dataset.id);
     if(el.dataset.f==='closed') syncChips(el.dataset.id);
   } else if(el.dataset.sf){
-    const clean=el.value.replace(/\D/g,'').slice(0,4); if(clean!==el.value) el.value=clean;
-    const id=el.dataset.sid, s=settings[id];
-    if(el.dataset.sf==='per') return; // appliqué à la sortie du champ (évite 7 au lieu de 70)
-    s.fixed=n(clean); el.classList.toggle('changed', s.fixed!==(DEFAULT_CAMION[id]??0));
-    if(!save(KEYSET,settings)){ saveOK=false; updateStatus(); }
-    refreshRow(id);
+    const clean=el.value.replace(/\D/g,'').slice(0,4); if(clean!==el.value) el.value=clean; // appliqué seulement après confirmation
   }
 });
 main.addEventListener('focusout',e=>{
   if(e.target.dataset.f){ activeInput=null; setTimeout(()=>{ if(!activeInput) nextBtn.hidden=true; },120); }
   if(e.target.dataset.f && before!==null){ pushHistory(before); before=null; }
   if(e.target.dataset.f==='closed') syncChips(e.target.dataset.id);
-  if(e.target.dataset.sf==='per'){
-    const id=e.target.dataset.sid, s=settings[id], g=ALL.find(x=>x.id===id).g, v=n(e.target.value);
-    const old=s.per; if(v>0) s.per=v; e.target.value=s.per; e.target.classList.toggle('changed', s.per!==g.per);
-    if(s.per!==old) toast(`${ALL.find(x=>x.id===id).label} : ${s.per} ${g.unit} par ${g.container}`);
-    if(!save(KEYSET,settings)){ saveOK=false; updateStatus(); }
-    refreshRow(id); const hp=main.querySelector('.ghead p'); if(hp) hp.textContent=groupHead(g);
+  if(e.target.dataset.sf){
+    const el=e.target, id=el.dataset.sid, f=el.dataset.sf, cur=settings[id][f], v=n(el.value);
+    if(el.value==='' || (f==='per' && v<1)){ el.value=cur; return; }
+    if(v!==cur) setTimeout(()=>{ if($('#modal').hidden) askTeamChange(id,f,v); else el.value=cur; },0);
   }
-  if(e.target.dataset.sf==='fixed' && e.target.value===''){ e.target.value=settings[e.target.dataset.sid].fixed; }
 });
 main.addEventListener('keydown',e=>{
   if(e.key==='Enter' && e.target.matches('input.num')){
@@ -741,13 +782,6 @@ main.addEventListener('click',e=>{
   if(more){ const inp=$('#c-'+more.dataset.id); inp.hidden=false; more.setAttribute('aria-pressed','true'); inp.focus(); return; }
   const go=e.target.closest('[data-goto]'); if(go){ setTab(go.dataset.goto); return; }
   if(e.target.closest('[data-open-settings]')){ const d=$('#settings'); d.open=true; d.scrollIntoView({behavior:'smooth',block:'start'}); return; }
-  const def=e.target.closest('[data-defaults]');
-  if(def){
-    const g=GROUPS.find(x=>x.id===def.dataset.defaults);
-    g.items.forEach(it=>{ settings[it.id].fixed=DEFAULT_CAMION[it.id]??0; settings[it.id].per=g.per; });
-    save(KEYSET,settings); render(); $('#settings').open=true; toast('Chiffres de l\'équipe remis pour '+g.name);
-    return;
-  }
   if(e.target.id==='copy'){ copyResult(); return; }
 });
 
@@ -787,7 +821,9 @@ function checkDay(){
   if($('#date').textContent!==d){ $('#date').textContent=d; if(resumedNow() && data.date!==todayShort() && $('#modal').hidden){ showResume=true; render(); askNewDay(); } }
 }
 function resumedNow(){ return ALL.some(it=>{ const c=data.counts[it.id]; return c.open!==''||c.closed!==''; }); }
-document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') persist(); else checkDay(); });
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') persist(); else { checkDay(); syncTeam(); } });
+setInterval(syncTeam,300000);
+window.addEventListener('online',syncTeam);
 setInterval(checkDay,60000);
 window.addEventListener('pagehide',persist);
 window.addEventListener('error',()=>{ try{ persist(); }catch(e){} });
@@ -802,7 +838,7 @@ try{ NAV.replaceState({cb:'base'},''); }catch(e){}
 navPush({cb:'app',tab});
 render();
 persist();
-if(camionUpdated) setTimeout(()=>toast('Chiffres camion mis à jour pour toute l\'équipe'),400);
+syncTeam();
 if(showResume && data.date!==todayShort()) askNewDay();
 else if(showResume && lastId){ const el=main.querySelector(`.item[data-id="${lastId}"]`); if(el) setTimeout(()=>el.scrollIntoView({block:'center'}),50); }
 })();
