@@ -183,6 +183,9 @@ textarea.copyfb{width:100%;height:180px;font-family:var(--f-num);font-size:13px;
 .dialog .btns{display:grid;gap:10px}
 .danger{border:0;background:var(--danger);color:#fff;border-radius:12px;padding:15px 16px;font-weight:700;font-size:17px}
 .dialog .secondary{padding:14px 16px;font-size:16px}
+.codefield{display:grid;gap:6px;font-weight:700;color:var(--navy);font-size:15px}
+.codefield input{height:48px;border:1.5px solid var(--line);border-radius:10px;padding:0 12px;font:inherit;font-weight:400;font-size:18px;background:#fff;color:var(--ink)}
+.codefield input:focus{border-color:var(--blue);outline:none;box-shadow:0 0 0 3px rgba(31,79,168,.25)}
 .resetlist{margin:0;padding:10px 12px;background:var(--field);border-radius:10px;font-size:14px;display:grid;gap:2px}
 
 .howto{display:grid;gap:14px}
@@ -284,7 +287,7 @@ const ORDER=['metha','bupre','oro','res'];
 const ALL = GROUPS.flatMap(g=>g.items.map(it=>({...it, g})));
 
 const KEY='csapa-comptage-v1', KEYSET='csapa-reglages-v1', KEYTAB='csapa-onglet';
-const KEYBAK=KEY+'-copie', KEYHIST='csapa-historique-v1', KEYTEAMTS='csapa-chiffres-equipe-date';
+const KEYBAK=KEY+'-copie', KEYHIST='csapa-historique-v1', KEYTEAMTS='csapa-chiffres-equipe-date', KEYTEAMCODE='csapa-chiffres-equipe-code';
 const TEAM_URL='https://lmyrneexelilsncmtliz.supabase.co/rest/v1', TEAM_KEY='sb_publishable_bQ2lTdxT2rzSLqrvUhLPSQ_j10PUtlr';
 function todayShort(){ return new Date().toLocaleDateString('fr-FR'); }
 function load(k,def){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch(e){ return def; } }
@@ -412,7 +415,7 @@ function syncTeam(){
     .catch(()=>{ teamOnline=false; const ti=$('#team-info'); if(ti) ti.textContent=teamInfo(); })
     .finally(()=>{ teamBusy=false; });
 }
-let pendingTeam=null;
+let pendingTeam=null, teamCode=load(KEYTEAMCODE,''); if(typeof teamCode!=='string') teamCode='';
 function askTeamChange(id,field,value){
   const it=ALL.find(x=>x.id===id), g=it.g, s=settings[id];
   pendingTeam={id, fixed: field==='fixed'?value:s.fixed, per: field==='per'?value:s.per};
@@ -421,18 +424,29 @@ function askTeamChange(id,field,value){
     <h3 id="modal-title">Êtes-vous sûr de vouloir changer pour l'ensemble de l'équipe ?</h3>
     <p>${it.sub} ${it.label}, ${what}</p>
     <p id="team-msg">Le nouveau chiffre s'appliquera sur tous les téléphones et changera les totaux de tout le monde.</p>
+    <label class="codefield" for="team-code">Mot de passe de l'équipe
+      <input id="team-code" type="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done"${teamCode?'':' data-autofocus'} value="${(teamCode||'').replace(/"/g,'&quot;')}">
+    </label>
     <div class="btns">
       <button class="primary" id="team-yes">Oui, changer pour toute l'équipe</button>
       <button class="secondary" data-close data-autofocus>Non, ne rien changer</button>
     </div>`);
 }
+function teamWarn(txt,btnTxt){
+  const m=$('#team-msg'); if(m){ m.textContent=txt; m.style.color='var(--warn)'; m.style.fontWeight='700'; }
+  const b=$('#team-yes'); if(b){ b.disabled=false; b.textContent=btnTxt; }
+}
 function sendTeamChange(){
-  const p=pendingTeam, btn=$('#team-yes'); if(!p || !btn) return;
+  const p=pendingTeam, btn=$('#team-yes'), inp=$('#team-code'); if(!p || !btn || !inp) return;
+  const code=inp.value.trim();
+  if(!code){ teamWarn('Tapez le mot de passe de l\'équipe pour changer ce chiffre.','Oui, changer pour toute l\'équipe'); inp.focus(); return; }
   btn.disabled=true; btn.textContent='Envoi…';
-  teamFetch('/rpc/comptebus_set_reglage',{method:'POST',body:JSON.stringify({p_id:p.id,p_fixed:p.fixed,p_per:p.per})})
-    .then(row=>{ if(!applyTeam(row,true) && !(isObj(row)&&isObj(row.data))) throw new Error('réponse'); pendingTeam=null; closeModal(); toast('Chiffre changé pour toute l\'équipe'); })
-    .catch(()=>{ const m=$('#team-msg'); if(m){ m.textContent='Envoi impossible (pas de réseau ?). Le chiffre n\'a pas été changé.'; m.style.color='var(--warn)'; m.style.fontWeight='700'; }
-      const b=$('#team-yes'); if(b){ b.disabled=false; b.textContent='Réessayer'; } });
+  teamFetch('/rpc/comptebus_set_reglage',{method:'POST',body:JSON.stringify({p_id:p.id,p_fixed:p.fixed,p_per:p.per,p_code:code})})
+    .then(row=>{
+      if(isObj(row) && row.error==='code'){ teamCode=''; save(KEYTEAMCODE,''); teamWarn('Mot de passe incorrect. Le chiffre n\'a pas été changé.','Réessayer'); const i=$('#team-code'); if(i){ i.value=''; i.focus(); } return; }
+      if(!(isObj(row)&&isObj(row.data))) throw new Error('réponse');
+      applyTeam(row,true); teamCode=code; save(KEYTEAMCODE,code); pendingTeam=null; closeModal(); toast('Chiffre changé pour toute l\'équipe'); })
+    .catch(()=>teamWarn('Envoi impossible (pas de réseau ?). Le chiffre n\'a pas été changé.','Réessayer'));
 }
 
 /* ---------- Saisie ---------- */
@@ -478,7 +492,7 @@ function renderGroup(g){
           <input class="num" id="sp-${it.id}" data-sid="${it.id}" data-sf="per" ${inputAttrs} value="${settings[it.id].per}" aria-label="${it.sub} ${it.label} — ${g.unit} par ${g.container}">
         `).join('')}
         <div class="foot">
-          <p>Le nombre camion est ajouté au total de chaque dosage. <b>Ces chiffres sont communs à toute l'équipe</b> : si vous en changez un, il change sur tous les téléphones (une confirmation est demandée).</p>
+          <p>Le nombre camion est ajouté au total de chaque dosage. <b>Ces chiffres sont communs à toute l'équipe</b> : si vous en changez un, il change sur tous les téléphones (une confirmation et le mot de passe de l'équipe sont demandés).</p>
           <p id="team-info">${teamInfo()}</p>
         </div>
       </div>
@@ -658,6 +672,7 @@ $('#modal-box').addEventListener('click',e=>{
   if(e.target.closest('#team-yes')) sendTeamChange();
   if(e.target.closest('a.wa')){ setTimeout(()=>{ closeModal(); markSent(); },50); }
 });
+$('#modal-box').addEventListener('keydown',e=>{ if(e.key==='Enter' && e.target.id==='team-code'){ e.preventDefault(); sendTeamChange(); } });
 
 /* ---------- Installation sur le téléphone ---------- */
 const ua=navigator.userAgent||'';

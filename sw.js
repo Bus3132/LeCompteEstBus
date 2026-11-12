@@ -1,6 +1,6 @@
 // Le compte est bus — permet d'ouvrir l'appli même sans réseau.
 // Toujours la version en ligne d'abord ; la copie en cache sert seulement hors connexion.
-const CACHE = 'compte-est-bus-v10';
+const CACHE = 'compte-est-bus-v11';
 const TIMEOUT_MS = 3500; // au-delà, on sert la copie locale (réseau faible dans le bus)
 const FILES = [
   './',
@@ -41,7 +41,8 @@ self.addEventListener('fetch', e => {
   if (!sameOrigin && !isFont) return;
 
   const cached = () => caches.match(req).then(r => r || (req.mode === 'navigate' ? caches.match('./index.html') : undefined));
-  const network = fetch(req).then(res => {
+  // « no-cache » : on redemande toujours au site s'il y a une version plus récente (sinon le téléphone peut garder l'ancienne 10 minutes)
+  const network = fetch(sameOrigin ? req.url : req, sameOrigin ? { cache: 'no-cache' } : undefined).then(res => {
     const sameHost = (() => { try { return new URL(res.url).origin === self.location.origin; } catch (e) { return false; } })();
     const cacheable = res && res.ok && !res.redirected && (sameHost || isFont || res.type === 'opaque');
     if (cacheable) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
