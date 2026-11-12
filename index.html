@@ -259,10 +259,12 @@ footer button{border:0;background:transparent;color:var(--blue);text-decoration:
 <script>
 (function(){
 /* ======================================================================
-   RÉGLAGES PAR DÉFAUT — à modifier ici si les stocks du camion changent.
-   Chaque appareil peut aussi les changer dans « Réglages » en bas de
-   chaque onglet ; le bouton « Revenir aux chiffres par défaut » y remet
-   les valeurs ci-dessous.
+   CHIFFRES CAMION DE L'ÉQUIPE — à modifier ici si le remplissage du camion change.
+   Dès que ce fichier est enregistré sur GitHub, TOUS les téléphones prennent
+   ces chiffres à leur prochaine ouverture (avec du réseau), et un message
+   « Chiffres camion mis à jour » s'affiche.
+   Une modification faite dans « Réglages » sur un téléphone ne vaut que pour
+   ce téléphone, jusqu'à la prochaine mise à jour de ce fichier.
    ====================================================================== */
 const DEFAULT_CAMION = {
   m5:20, m10:34, m20:20, m40:40, m60:40,          // Méthadone (flacons)
@@ -285,7 +287,7 @@ const ORDER=['metha','bupre','oro','res'];
 const ALL = GROUPS.flatMap(g=>g.items.map(it=>({...it, g})));
 
 const KEY='csapa-comptage-v1', KEYSET='csapa-reglages-v1', KEYTAB='csapa-onglet';
-const KEYBAK=KEY+'-copie', KEYHIST='csapa-historique-v1', KEYCAMIONV2='csapa-reglages-camion-v2';
+const KEYBAK=KEY+'-copie', KEYHIST='csapa-historique-v1', KEYCAMIONREF='csapa-chiffres-equipe';
 function todayShort(){ return new Date().toLocaleDateString('fr-FR'); }
 function load(k,def){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch(e){ return def; } }
 function save(k,v){ try{ const t=JSON.stringify(v); localStorage.setItem(k,t); return localStorage.getItem(k)===t; }catch(e){ return false; } }
@@ -301,16 +303,24 @@ if(typeof data.date!=='string') data.date = todayShort();
 ALL.forEach(it=>{ const c=data.counts[it.id]; if(!isObj(c)) data.counts[it.id]={open:'',closed:''}; else { c.open=String(c.open??'').replace(/\D/g,''); c.closed=String(c.closed??'').replace(/\D/g,''); } });
 const resumed = ALL.some(it=>{ const c=data.counts[it.id]; return c.open!==''||c.closed!==''; });
 
-// Réglages : chiffres camion par défaut appliqués une seule fois, ensuite ceux de l'appareil sont gardés
+// Réglages : les chiffres de l'équipe (ci-dessus) s'imposent à tous les téléphones
+// chaque fois qu'ils changent dans le fichier. Entre deux mises à jour, un téléphone
+// peut les modifier localement (dépannage).
 let settings = load(KEYSET,{}); if(!isObj(settings)) settings={};
-const applyCamionDefaults = load(KEYCAMIONV2,false) !== true;
+const teamRef = JSON.stringify(ALL.map(it=>[it.id, DEFAULT_CAMION[it.id]??0, it.g.per]));
+const teamChanged = load(KEYCAMIONREF,null) !== teamRef;
+let camionUpdated = false;
 ALL.forEach(it=>{
   if(!isObj(settings[it.id])) settings[it.id]={fixed:DEFAULT_CAMION[it.id]??0, per:it.g.per};
-  settings[it.id].fixed=n(settings[it.id].fixed); settings[it.id].per=n(settings[it.id].per);
-  if(applyCamionDefaults) settings[it.id].fixed = DEFAULT_CAMION[it.id] ?? 0;
-  if(!(settings[it.id].per>0)) settings[it.id].per = it.g.per;
+  const s=settings[it.id]; s.fixed=n(s.fixed); s.per=n(s.per);
+  if(!(s.per>0)) s.per = it.g.per;
+  if(teamChanged){
+    const f=DEFAULT_CAMION[it.id]??0;
+    if(s.fixed!==f || s.per!==it.g.per) camionUpdated = true;
+    s.fixed=f; s.per=it.g.per;
+  }
 });
-if(applyCamionDefaults){ save(KEYSET,settings); save(KEYCAMIONV2,true); }
+if(teamChanged){ save(KEYSET,settings); save(KEYCAMIONREF,teamRef); }
 
 let tab = load(KEYTAB,'metha'); if(!ORDER.includes(tab)) tab='metha';
 const h0=load(KEYHIST,null);
@@ -411,17 +421,18 @@ function renderGroup(g){
       </div>`).join('')}
     </div>
     <details class="settings" id="settings">
-      <summary>Réglages : camion et contenance</summary>
+      <summary>Réglages : camion et contenance${g.items.some(it=>settings[it.id].fixed!==(DEFAULT_CAMION[it.id]??0)||settings[it.id].per!==g.per)?' <span class="badge">modifié ici</span>':''}</summary>
       <div class="setgrid">
         <span class="h">Dosage</span><span class="h">Camion</span><span class="h">Par ${g.container}</span>
         ${g.items.map(it=>`
-          <span class="lbl">${it.label}<small>par défaut : ${DEFAULT_CAMION[it.id]??0}</small></span>
+          <span class="lbl">${it.label}<small>équipe : ${DEFAULT_CAMION[it.id]??0}</small></span>
           <input class="num${n(settings[it.id].fixed)!==(DEFAULT_CAMION[it.id]??0)?' changed':''}" id="sf-${it.id}" data-sid="${it.id}" data-sf="fixed" ${inputAttrs} value="${settings[it.id].fixed??''}" placeholder="0" aria-label="${it.sub} ${it.label} — nombre camion">
           <input class="num${settings[it.id].per!==g.per?' changed':''}" id="sp-${it.id}" data-sid="${it.id}" data-sf="per" ${inputAttrs} value="${settings[it.id].per}" aria-label="${it.sub} ${it.label} — ${g.unit} par ${g.container}">
         `).join('')}
         <div class="foot">
-          <p>Touchez un chiffre pour le changer : il est enregistré tout de suite sur ce téléphone et gardé d'un jour à l'autre. Le nombre camion est ajouté au total de chaque dosage.</p>
-          <button class="linkbtn" data-defaults="${g.id}">Revenir aux chiffres par défaut</button>
+          <p>Le nombre camion est ajouté au total de chaque dosage. Ces chiffres sont les mêmes pour toute l'équipe et se mettent à jour tout seuls.</p>
+          <p>Une case changée ici (en orange) ne vaut que pour ce téléphone, jusqu'à la prochaine mise à jour de l'équipe. Pour changer pour tout le monde, voir le mode d'emploi.</p>
+          <button class="linkbtn" data-defaults="${g.id}">Revenir aux chiffres de l'équipe</button>
         </div>
       </div>
     </details>
@@ -734,7 +745,7 @@ main.addEventListener('click',e=>{
   if(def){
     const g=GROUPS.find(x=>x.id===def.dataset.defaults);
     g.items.forEach(it=>{ settings[it.id].fixed=DEFAULT_CAMION[it.id]??0; settings[it.id].per=g.per; });
-    save(KEYSET,settings); render(); $('#settings').open=true; toast('Chiffres par défaut remis pour '+g.name);
+    save(KEYSET,settings); render(); $('#settings').open=true; toast('Chiffres de l\'équipe remis pour '+g.name);
     return;
   }
   if(e.target.id==='copy'){ copyResult(); return; }
@@ -791,6 +802,7 @@ try{ NAV.replaceState({cb:'base'},''); }catch(e){}
 navPush({cb:'app',tab});
 render();
 persist();
+if(camionUpdated) setTimeout(()=>toast('Chiffres camion mis à jour pour toute l\'équipe'),400);
 if(showResume && data.date!==todayShort()) askNewDay();
 else if(showResume && lastId){ const el=main.querySelector(`.item[data-id="${lastId}"]`); if(el) setTimeout(()=>el.scrollIntoView({block:'center'}),50); }
 })();
