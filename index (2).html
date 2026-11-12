@@ -1,0 +1,811 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Le compte est bus</title>
+<meta name="description" content="Comptage quotidien des TSO (méthadone, buprénorphine, Orobupré) au Bus 31/32.">
+<meta name="theme-color" content="#0d2a5e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="img/favicon.png">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Compte est bus">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<style>
+/* Polices intégrées à l'appli (fonctionnent aussi sans réseau) */
+@font-face{font-family:"Permanent Marker";src:url(fonts/permanent-marker.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Atkinson Hyperlegible";src:url(fonts/atkinson-400.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Atkinson Hyperlegible";src:url(fonts/atkinson-700.woff2) format("woff2");font-weight:700;font-display:swap}
+@font-face{font-family:"Atkinson Hyperlegible Mono";src:url(fonts/atkinson-mono-400.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Atkinson Hyperlegible Mono";src:url(fonts/atkinson-mono-600.woff2) format("woff2");font-weight:600;font-display:swap}
+@font-face{font-family:"Atkinson Hyperlegible Mono";src:url(fonts/atkinson-mono-700.woff2) format("woff2");font-weight:700;font-display:swap}
+/* Layout : une colonne étroite. En haut le logo « Le compte est bus » (défile),
+   puis une barre collante : Annuler / Rétablir / Remise à zéro + onglets.
+   Chaque dosage = une ligne teintée à sa couleur : à l'unité / fermés / reste. */
+:root{
+  color-scheme:light;
+  --navy:#0d2a5e; --blue:#1f4fa8; --orange:#ee8a12; --grey:#77787b;
+  --bg:#f3f5f9; --surface:#ffffff; --ink:#14203a; --muted:#5d6779; --line:#d8dde7; --field:#f7f9fc;
+  --accent:var(--blue); --accent-ink:#ffffff;
+  --metha:var(--orange); --bupre:var(--blue); --oro:var(--grey);
+  --on-metha:#2a1700; --on-bupre:#ffffff; --on-oro:#ffffff;
+  --wa:#178a47; --wa-ink:#ffffff;
+  --warn:#b0480c; --warn-bg:#fdefe2; --danger:#c2410c;
+  --f-brand:"Permanent Marker", "Marker Felt", "Arial Black", "Helvetica Neue", sans-serif;
+  --f-body:"Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-num:"Atkinson Hyperlegible Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+img{max-width:100%}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.4;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{max-width:560px;margin:0 auto}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var(--orange);outline-offset:2px}
+
+/* ---------- Logo ---------- */
+.brand{display:flex;align-items:center;gap:12px;padding-block:14px 8px}
+.brand img{width:84px;height:84px;flex:0 0 auto;border-radius:18px;background:#fff;box-shadow:0 1px 0 var(--line), 0 6px 16px -10px var(--navy)}
+.brand .txt{flex:1;min-width:0}
+.wordmark{margin:0;white-space:nowrap;font-family:var(--f-brand);font-weight:400;font-size:clamp(21px,6.6vw,31px);line-height:.95;color:var(--navy);letter-spacing:.01em;transform:rotate(-2deg);transform-origin:left center}
+.wordmark .est{color:var(--grey);font-size:.82em}
+.wordmark .bus{color:var(--orange);font-size:1.12em}
+.brand .row2{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px}
+.tagline{margin:0;font-size:13px;color:var(--muted);display:flex;flex-wrap:wrap;gap:2px 8px;align-items:center}
+.tagline b{color:var(--navy)}
+.tagline .date{font-family:var(--f-num)}
+.installbtn{flex:0 0 auto;border:1.5px solid var(--navy);background:var(--surface);color:var(--navy);border-radius:99px;padding:6px 11px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:5px}
+.installbtn svg{width:16px;height:16px}
+
+/* ---------- Barre collante ---------- */
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:8px 10px;display:grid;gap:8px;border-bottom:1px solid var(--line)}
+.toolbar{display:flex;gap:6px}
+.tbtn.next{background:var(--navy);color:#fff;border-color:var(--navy)}
+.notice.lock{background:#e8f0fb;color:var(--navy)}
+.notice.lock button,.notice button.strong{border:1.5px solid currentColor;text-decoration:none;border-radius:9px;padding:6px 10px}
+.panel.locked input.num,.panel.locked .chip{opacity:.55}
+.issues{margin:0;padding:10px 12px;background:var(--warn-bg);color:var(--warn);border-radius:10px;font-size:15px;display:grid;gap:4px;list-style:none}
+.dialog a.wa{font-size:17px;padding:14px 16px}
+.dialog .primary{padding:15px 16px;font-size:17px}
+.tbtn{border:1px solid var(--line);background:var(--surface);border-radius:10px;height:40px;padding:0 10px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:14px;font-weight:700;color:var(--navy)}
+.tbtn:disabled{opacity:.35;cursor:default}
+.tbtn svg{width:18px;height:18px;flex:0 0 auto}
+.tbtn.reset{margin-left:auto;color:var(--danger);border-color:color-mix(in srgb,var(--danger) 35%,var(--line))}
+@media (max-width:400px){ .tbtn .opt{display:none} }
+@media (max-width:360px){ .tbtn#undo span{display:none} }
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:3px;gap:3px}
+.tabs button{border:0;background:transparent;border-radius:9px;padding:9px 2px;font-size:14px;font-weight:700;display:flex;justify-content:center;align-items:center;gap:5px;min-width:0}
+.tabs button[aria-selected="true"]{background:var(--g,var(--navy));color:var(--on-g,#fff)}
+.tabs [data-tab="metha"]{--g:var(--metha);--on-g:var(--on-metha)} .tabs [data-tab="bupre"]{--g:var(--bupre);--on-g:var(--on-bupre)} .tabs [data-tab="oro"]{--g:var(--oro);--on-g:var(--on-oro)}
+.tabs button[aria-selected="true"] .badge{background:color-mix(in srgb,#fff 28%,transparent);color:inherit}
+.badge{font-family:var(--f-num);font-size:11px;min-width:18px;padding:1px 5px;border-radius:99px;background:var(--warn-bg);color:var(--warn)}
+.badge.done{background:transparent;color:inherit;opacity:.7}
+.status{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);font-family:var(--f-num);min-height:16px}
+.status .dot{width:8px;height:8px;border-radius:50%;background:#2f9e5b;flex:0 0 auto}
+.status.ko{color:var(--warn);font-family:var(--f-body);font-weight:700}
+.status.ko .dot{background:var(--warn)}
+
+/* ---------- Contenu ---------- */
+main{padding-top:14px}
+.panel{display:grid;gap:12px}
+.ghead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ghead h2{margin:0;font-size:23px;text-wrap:balance;display:flex;align-items:center;gap:10px;color:var(--navy)}
+.ghead h2 .pill{font-family:var(--f-brand);font-weight:400;font-size:16px;background:var(--g,var(--navy));color:var(--on-g,#fff);border-radius:6px;padding:2px 9px 1px;transform:rotate(-3deg);letter-spacing:.03em}
+.ghead p{margin:0;color:var(--muted);font-size:13px;font-family:var(--f-num);text-align:right}
+.metha{--g:var(--metha);--on-g:var(--on-metha)} .bupre{--g:var(--bupre);--on-g:var(--on-bupre)} .oro{--g:var(--oro);--on-g:var(--on-oro)}
+
+.notice{background:var(--warn-bg);color:var(--warn);border-radius:10px;padding:10px 12px;font-size:14px;display:flex;gap:10px;align-items:center;justify-content:space-between}
+.notice button{border:0;background:transparent;text-decoration:underline;font-weight:700;color:inherit;padding:4px;white-space:nowrap}
+.resume{background:var(--surface);border:1.5px solid var(--blue);border-radius:12px;padding:10px 12px;font-size:14px;display:grid;gap:8px}
+.resume strong{font-size:15px;color:var(--navy)}
+.resume div{display:flex;gap:8px;flex-wrap:wrap}
+.resume button{border:1px solid var(--line);background:var(--field);border-radius:10px;padding:8px 12px;font-weight:700;font-size:14px}
+
+.list{background:var(--surface);border:1px solid var(--line);border-top:5px solid var(--g,var(--line));border-radius:14px;overflow:hidden}
+.cols,.row{display:grid;grid-template-columns:minmax(72px,1.1fr) 1fr 1fr minmax(64px,.9fr);gap:8px;align-items:center;padding:0 12px}
+.cols.c3,.row.c3{grid-template-columns:minmax(72px,1.1fr) 1fr minmax(72px,1fr)}
+.cols{padding-block:8px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line)}
+.cols span:last-child{text-align:right}
+.item{border-bottom:1px solid var(--line);padding-block:10px 8px;display:grid;gap:6px;background:#f6f7fa;background:color-mix(in srgb,var(--dc,var(--g)) 15%,#ffffff)}
+.item:last-child{border-bottom:0}
+.item.here{box-shadow:inset 0 0 0 3px var(--navy)}
+.dose{font-weight:700;font-size:17px;line-height:1.1;border-left:6px solid var(--dc,var(--g));padding-left:8px;display:flex;align-items:center;gap:7px;color:var(--navy)}
+.dose small{display:block;font-weight:400;font-size:12px;color:var(--muted)}
+.vial{width:15px;height:24px;flex:0 0 auto;color:var(--muted)}
+input.num{width:100%;min-width:0;height:48px;border:1.5px solid var(--line);background:#fff;color:var(--ink);border-radius:10px;
+  font-family:var(--f-num);font-size:22px;font-weight:600;text-align:center;font-variant-numeric:tabular-nums;padding:0 4px}
+input.num::placeholder{color:var(--muted);opacity:.45;font-weight:400}
+input.num:focus{border-color:var(--blue);outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--blue) 25%,transparent)}
+input.num.bad{border-color:var(--warn)}
+.total{text-align:right;font-family:var(--f-num);font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--navy)}
+.total.empty{color:var(--muted);opacity:.5;font-weight:400}
+.formula{padding:0 12px;font-family:var(--f-num);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;min-height:1.4em}
+.formula .w{color:var(--warn);font-family:var(--f-body);font-weight:700}
+
+/* Cartons fermés : boutons 0 à 6 */
+.chips{display:flex;align-items:center;gap:5px;padding:0 12px;flex-wrap:wrap}
+.chips .clab{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);width:100%}
+.chip{flex:1 1 0;min-width:34px;height:42px;border:1.5px solid var(--line);background:#fff;border-radius:10px;
+  font-family:var(--f-num);font-size:18px;font-weight:600;font-variant-numeric:tabular-nums;padding:0}
+.chip.more{font-size:15px;flex:1.2 1 0}
+.chip[aria-pressed="true"]{background:var(--dc,var(--g));border-color:var(--dc,var(--g));color:#1b1b1b}
+.chip:not([aria-pressed="true"]):hover{border-color:var(--dc,var(--g))}
+.chips input.num{flex:0 0 76px;height:42px;font-size:18px}
+
+details.settings{scroll-margin-top:150px;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+details.settings summary{padding:12px 14px;cursor:pointer;font-weight:700;font-size:15px;color:var(--navy)}
+.setgrid{display:grid;grid-template-columns:1fr 88px 88px;gap:8px 10px;align-items:center;padding:0 14px 14px}
+.setgrid .h{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.setgrid .lbl{font-weight:700}
+.setgrid .lbl small{display:block;font-weight:400;font-size:12px;color:var(--muted)}
+.setgrid input.num{height:40px;font-size:18px}
+.setgrid input.num.changed{border-color:var(--orange)}
+.setgrid .foot{grid-column:1/-1;display:grid;gap:8px;margin-top:4px}
+.setgrid .foot p{margin:0;font-size:13px;color:var(--muted)}
+.linkbtn{justify-self:start;border:1px solid var(--line);background:var(--field);border-radius:10px;padding:8px 12px;font-weight:700;font-size:14px;color:var(--navy)}
+
+.next{display:flex;justify-content:flex-end}
+.primary{border:0;background:var(--navy);color:#fff;border-radius:12px;padding:13px 18px;font-weight:700;font-size:16px}
+.secondary{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:12px 16px;font-weight:700;font-size:15px;color:var(--navy)}
+a.wa{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--wa);color:var(--wa-ink);text-decoration:none;border-radius:14px;padding:16px 18px;font-weight:700;font-size:18px}
+a.wa svg{width:24px;height:24px}
+
+.tablewrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{padding:9px 8px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+thead th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}
+td{font-family:var(--f-num);font-size:15px}
+@media (max-width:420px){ th,td{padding:8px 5px} td{font-size:14px} td.big{font-size:17px} thead th{font-size:10px;letter-spacing:.03em} }
+td:first-child{font-family:var(--f-body);font-weight:700;color:var(--navy)}
+td .vial{vertical-align:middle;margin-right:6px;width:12px;height:19px}
+td.big{font-size:19px;font-weight:700;color:var(--navy)}
+tbody tr:not(.grp){background:color-mix(in srgb,var(--dc,var(--g)) 9%,#fff)}
+tr.grp td{font-family:var(--f-brand);font-weight:400;font-size:16px;letter-spacing:.02em;padding-top:14px;border-bottom:3px solid var(--g);color:var(--navy);background:#fff}
+tr:last-child td{border-bottom:0}
+td .todo{font-family:var(--f-body);font-size:12px;font-weight:700;color:var(--warn);background:var(--warn-bg);padding:2px 8px;border-radius:99px}
+.actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between}
+textarea.copyfb{width:100%;height:180px;font-family:var(--f-num);font-size:13px;background:var(--field);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--navy);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:30;max-width:calc(100% - 32px)}
+
+/* ---------- Fenêtres (remise à zéro, installation) ---------- */
+.overlay{position:fixed;inset:0;z-index:20;background:rgba(13,42,94,.55);background:color-mix(in srgb,var(--navy) 55%,transparent);display:grid;place-items:center;
+  padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.dialog{background:var(--surface);border-radius:18px;width:100%;max-width:420px;max-height:100%;overflow:auto;padding:20px;display:grid;gap:14px;box-shadow:0 24px 60px -20px #000}
+.dialog h3{margin:0;font-size:21px;color:var(--navy);text-wrap:balance}
+.dialog p{margin:0;color:var(--muted);font-size:15px}
+.dialog .btns{display:grid;gap:10px}
+.danger{border:0;background:var(--danger);color:#fff;border-radius:12px;padding:15px 16px;font-weight:700;font-size:17px}
+.dialog .secondary{padding:14px 16px;font-size:16px}
+.resetlist{margin:0;padding:10px 12px;background:var(--field);border-radius:10px;font-size:14px;display:grid;gap:2px}
+
+.howto{display:grid;gap:14px}
+.howto .logo{width:150px;margin:0 auto;display:block;border-radius:16px}
+.os{border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:grid;gap:8px}
+.os.mine{border-color:var(--blue);border-width:2px}
+.os h4{margin:0;font-size:17px;color:var(--navy);display:flex;align-items:center;gap:8px}
+.os h4 .you{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;background:var(--blue);color:#fff;border-radius:99px;padding:2px 8px}
+.os ol{margin:0;padding-left:20px;display:grid;gap:6px;font-size:15px}
+.os ol b{color:var(--navy)}
+.key{display:inline-flex;align-items:center;justify-content:center;vertical-align:-4px;width:22px;height:22px;border:1px solid var(--line);border-radius:6px;background:var(--field);color:var(--blue)}
+.key svg{width:15px;height:15px}
+.howto .note{font-size:13px;color:var(--muted);margin:0}
+
+footer{margin-top:28px;text-align:center;font-size:12px;color:var(--muted);display:grid;gap:8px;justify-items:center}
+footer .brush{width:100%;height:8px;border-radius:4px;background:linear-gradient(90deg,var(--navy) 0 45%,var(--grey) 45% 60%,var(--orange) 60% 100%);opacity:.85;clip-path:polygon(0 30%,4% 0,96% 10%,100% 60%,97% 100%,2% 85%)}
+footer button{border:0;background:transparent;color:var(--blue);text-decoration:underline;font-weight:700;font-size:13px;padding:4px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="brand">
+    <img src="img/mascotte.png" alt="Le bus 31/32 du logo « Le compte est bus »" width="84" height="84">
+    <div class="txt">
+      <h1 class="wordmark">Le compte <span class="est">est</span> <span class="bus">bus</span></h1>
+      <div class="row2">
+        <p class="tagline"><b>Comptage des TSO</b><span class="date" id="date"></span></p>
+        <button class="installbtn" id="install" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>Installer
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <header>
+    <div class="toolbar">
+      <button class="tbtn" id="undo" title="Annuler la dernière saisie">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg><span>Annuler</span>
+      </button>
+      <button class="tbtn" id="redo" title="Rétablir la saisie annulée">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg><span class="opt">Rétablir</span>
+      </button>
+      <button class="tbtn next" id="nextbtn" hidden>Suivant ›</button>
+      <button class="tbtn reset" id="reset" title="Effacer toutes les saisies et recommencer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg><span>Remise à zéro</span>
+      </button>
+    </div>
+    <div class="tabs" role="tablist">
+      <button role="tab" data-tab="metha">Métha <span class="badge" id="b-metha"></span></button>
+      <button role="tab" data-tab="bupre">Bupré <span class="badge" id="b-bupre"></span></button>
+      <button role="tab" data-tab="oro">Oro <span class="badge" id="b-oro"></span></button>
+      <button role="tab" data-tab="res">Résultat</button>
+    </div>
+    <div class="status" id="status" aria-live="polite"><span class="dot"></span><span id="status-txt">Prêt</span></div>
+  </header>
+
+  <main id="main"></main>
+
+  <footer>
+    <div class="brush" aria-hidden="true"></div>
+    <span>Le compte est bus · Bus 31/32 · Marseille</span>
+    <button id="howto-link">Comment installer l'appli sur son téléphone</button>
+  </footer>
+</div>
+
+<div class="overlay" id="modal" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="modal-title" id="modal-box"></div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+(function(){
+/* ======================================================================
+   CHIFFRES CAMION DE L'ÉQUIPE — à modifier ici si le remplissage du camion change.
+   Dès que ce fichier est enregistré sur GitHub, TOUS les téléphones prennent
+   ces chiffres à leur prochaine ouverture (avec du réseau), et un message
+   « Chiffres camion mis à jour » s'affiche.
+   Une modification faite dans « Réglages » sur un téléphone ne vaut que pour
+   ce téléphone, jusqu'à la prochaine mise à jour de ce fichier.
+   ====================================================================== */
+const DEFAULT_CAMION = {
+  m5:20, m10:34, m20:20, m40:40, m60:40,          // Méthadone (flacons)
+  b0_4:7, b1:7, b2:14, b4:14, b6:14, b8:14,      // Buprénorphine (cp)
+  o2:7, o8:7                                      // Orobupré (cp)
+};
+
+// Couleurs des étiquettes des flacons de sirop Méthadone AP-HP
+const METHA_COLORS={5:'#f3a6c4',10:'#f8b234',20:'#aab0b7',40:'#8fc740',60:'#3db5e6'};
+function vial(c){ return c ? `<svg class="vial" viewBox="0 0 15 24" aria-hidden="true"><rect x="3.5" y="0.5" width="8" height="5" rx="1.2" fill="${c}"/><rect x="1" y="5.5" width="13" height="18" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="2.6" y="12" width="9.8" height="10" rx="1.4" fill="${c}"/></svg>` : ''; }
+const GROUPS = [
+  { id:'metha', short:'MÉTHA', name:'Méthadone', unit:'flacons', container:'carton', openLbl:'Carton ouvert', closedLbl:'Cartons fermés', per:70, chips:6,
+    items:[5,10,20,40,60].map(d=>({id:'m'+d, label:d+' mg', sub:'Méthadone', color:METHA_COLORS[d]})) },
+  { id:'bupre', short:'BUPRÉ', name:'Buprénorphine', unit:'cp', container:'boîte', openLbl:'Nombre de comprimés', closedLbl:'Boîtes fermées', per:7,
+    items:[0.4,1,2,4,6,8].map(d=>({id:'b'+String(d).replace('.','_'), label:String(d).replace('.',',')+' mg', sub:'Bupré'})) },
+  { id:'oro', short:'ORO', name:'Orobupré', unit:'cp', container:'boîte', openLbl:'Nombre de comprimés', closedLbl:'Boîtes fermées', per:7,
+    items:[2,8].map(d=>({id:'o'+d, label:d+' mg', sub:'Orobupré'})) }
+];
+const ORDER=['metha','bupre','oro','res'];
+const ALL = GROUPS.flatMap(g=>g.items.map(it=>({...it, g})));
+
+const KEY='csapa-comptage-v1', KEYSET='csapa-reglages-v1', KEYTAB='csapa-onglet';
+const KEYBAK=KEY+'-copie', KEYHIST='csapa-historique-v1', KEYCAMIONREF='csapa-chiffres-equipe';
+function todayShort(){ return new Date().toLocaleDateString('fr-FR'); }
+function load(k,def){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch(e){ return def; } }
+function save(k,v){ try{ const t=JSON.stringify(v); localStorage.setItem(k,t); return localStorage.getItem(k)===t; }catch(e){ return false; } }
+let saveOK=true, savedAt=null;
+
+// Reprise : on lit la sauvegarde, et la copie de secours si elle est abîmée
+function n(v){ return v===''||v==null ? 0 : parseInt(v,10)||0; }
+const isObj=x=>x && typeof x==='object' && !Array.isArray(x);
+let data = load(KEY,null);
+if(!isObj(data) || !isObj(data.counts)) data = load(KEYBAK,null);
+if(!isObj(data) || !isObj(data.counts)) data = { date: todayShort(), counts:{} };
+if(typeof data.date!=='string') data.date = todayShort();
+ALL.forEach(it=>{ const c=data.counts[it.id]; if(!isObj(c)) data.counts[it.id]={open:'',closed:''}; else { c.open=String(c.open??'').replace(/\D/g,''); c.closed=String(c.closed??'').replace(/\D/g,''); } });
+const resumed = ALL.some(it=>{ const c=data.counts[it.id]; return c.open!==''||c.closed!==''; });
+
+// Réglages : les chiffres de l'équipe (ci-dessus) s'imposent à tous les téléphones
+// chaque fois qu'ils changent dans le fichier. Entre deux mises à jour, un téléphone
+// peut les modifier localement (dépannage).
+let settings = load(KEYSET,{}); if(!isObj(settings)) settings={};
+const teamRef = JSON.stringify(ALL.map(it=>[it.id, DEFAULT_CAMION[it.id]??0, it.g.per]));
+const teamChanged = load(KEYCAMIONREF,null) !== teamRef;
+let camionUpdated = false;
+ALL.forEach(it=>{
+  if(!isObj(settings[it.id])) settings[it.id]={fixed:DEFAULT_CAMION[it.id]??0, per:it.g.per};
+  const s=settings[it.id]; s.fixed=n(s.fixed); s.per=n(s.per);
+  if(!(s.per>0)) s.per = it.g.per;
+  if(teamChanged){
+    const f=DEFAULT_CAMION[it.id]??0;
+    if(s.fixed!==f || s.per!==it.g.per) camionUpdated = true;
+    s.fixed=f; s.per=it.g.per;
+  }
+});
+if(teamChanged){ save(KEYSET,settings); save(KEYCAMIONREF,teamRef); }
+
+let tab = load(KEYTAB,'metha'); if(!ORDER.includes(tab)) tab='metha';
+const h0=load(KEYHIST,null);
+let history=(isObj(h0)&&Array.isArray(h0.history))?h0.history.filter(x=>typeof x==='string'):[];
+let future=(isObj(h0)&&Array.isArray(h0.future))?h0.future.filter(x=>typeof x==='string'):[];
+let lastId=data.last||null, showResume=resumed;
+
+const $=s=>document.querySelector(s);
+const main=$('#main');
+$('#date').textContent = new Date().toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});
+
+function filled(id){ const c=data.counts[id]; return c.open!=='' || c.closed!==''; }
+function total(id){ const c=data.counts[id], s=settings[id]; return n(c.open) + n(c.closed)*s.per + n(s.fixed); }
+let lastSnap=null;
+function persist(){
+  const cur=snap(), changed = cur!==lastSnap;
+  if(changed && lastSnap!==null) data.saved=Date.now();
+  lastSnap=cur; data.last=lastId; data.tab=tab;
+  const ok1=save(KEY,data), ok2=save(KEYBAK,data);
+  save(KEYHIST,{history:history.slice(-60),future:future.slice(-60)});
+  const wasOK=saveOK; saveOK = ok1||ok2;
+  if(saveOK && changed && data.saved) savedAt=new Date(data.saved);
+  if(changed || wasOK!==saveOK) updateStatus();
+  updateChrome();
+}
+function hhmm(d){ return d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }
+function updateStatus(){
+  const st=$('#status'), tx=$('#status-txt');
+  st.classList.toggle('ko',!saveOK);
+  tx.textContent = !saveOK ? 'Sauvegarde impossible sur ce navigateur : ne fermez pas la page avant d\'avoir envoyé le résultat.'
+    : savedAt ? 'Dernière saisie enregistrée à '+hhmm(savedAt) : 'Enregistrement automatique activé';
+}
+function snap(){ return JSON.stringify({c:data.counts,d:data.date}); }
+function pushHistory(before){ if(before===snap()) return; history.push(before); if(history.length>200) history.shift(); future=[]; persist(); }
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.hidden=false; clearTimeout(toast._t); toast._t=setTimeout(()=>t.hidden=true,2400); }
+
+function updateChrome(){
+  $('#undo').disabled = history.length===0;
+  $('#redo').disabled = future.length===0;
+  GROUPS.forEach(g=>{
+    const left = g.items.filter(it=>!filled(it.id)).length;
+    const b=$('#b-'+g.id); b.textContent = left ? left : '✓'; b.classList.toggle('done', !left);
+    b.title = left ? left+' dosage(s) à compter' : 'Tout est compté';
+  });
+  document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected', b.dataset.tab===tab));
+}
+
+const inputAttrs='inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" autocomplete="off"';
+
+/* ---------- Envoi / verrouillage ---------- */
+function markSent(){ data.sent=Date.now(); persist(); render(); toast('Comptage envoyé et verrouillé'); }
+function fmtTs(ts){ const d=new Date(ts); return d.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'})+' à '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }
+function lockBanner(){ return data.sent ? `<div class="notice lock"><span>Comptage envoyé ${fmtTs(data.sent)}. Les saisies sont verrouillées.</span><button data-unlock>Modifier</button></div>` : ''; }
+
+/* ---------- Vérification avant envoi ---------- */
+function issues(){
+  const out=[];
+  ALL.forEach(it=>{ const c=data.counts[it.id], s=settings[it.id], g=it.g;
+    if(!filled(it.id)) out.push(`${it.sub} ${it.label} : non compté`);
+    else if(c.open==='') out.push(`${it.sub} ${it.label} : ${g.openLbl.toLowerCase()} ?`);
+    else if(c.closed==='') out.push(`${it.sub} ${it.label} : ${g.closedLbl.toLowerCase()} ?`);
+    else if(g.chips && n(c.open)>=s.per) out.push(`${it.sub} ${it.label} : ${g.container} ouvert ≥ ${s.per}`);
+  });
+  return out;
+}
+
+/* ---------- Saisie ---------- */
+function groupHead(g){ const pers=[...new Set(g.items.map(it=>settings[it.id].per))]; return pers.length===1 ? `1 ${g.container} = ${pers[0]} ${g.unit}` : `${g.unit} par ${g.container} : voir réglages`; }
+function renderGroup(g){
+  const unset = g.items.filter(it=>!n(settings[it.id].fixed)).length;
+  const nextTab = ORDER[ORDER.indexOf(g.id)+1];
+  const nextLbl = {bupre:'Suivant : Bupré', oro:'Suivant : Orobupré', res:'Voir le résultat'}[nextTab];
+  const c3 = g.chips ? 'c3' : '';
+  const locked=!!data.sent, dis=locked?' disabled':'';
+  main.innerHTML = `
+  <section class="panel ${g.id}${locked?' locked':''}">
+    ${resumeBanner()}${lockBanner()}
+    <div class="ghead"><h2><span class="pill">${g.short}</span>${g.name}</h2><p>${groupHead(g)}</p></div>
+    ${unset===g.items.length ? `<div class="notice"><span>Le nombre « camion » n'est pas réglé (compté 0).</span><button data-open-settings>Régler</button></div>`:''}
+    <div class="list">
+      <div class="cols ${c3}"><span>Dosage</span><span>${g.openLbl}</span>${g.chips?'':`<span>${g.closedLbl}</span>`}<span>Reste</span></div>
+      ${g.items.map(it=>`
+      <div class="item" data-id="${it.id}"${it.color?` style="--dc:${it.color}"`:''}>
+        <div class="row ${c3}">
+          <div class="dose">${vial(it.color)}<span>${it.label}<small>${it.sub}</small></span></div>
+          <input class="num" id="o-${it.id}" data-id="${it.id}" data-f="open" ${inputAttrs}${dis} placeholder="0" aria-label="${it.sub} ${it.label} — ${g.openLbl}">
+          ${g.chips?'':`<input class="num" id="c-${it.id}" data-id="${it.id}" data-f="closed" ${inputAttrs}${dis} placeholder="0" aria-label="${it.sub} ${it.label} — ${g.closedLbl}">`}
+          <div class="total" id="tot-${it.id}"></div>
+        </div>
+        ${g.chips?`
+        <div class="chips" role="group" aria-label="${it.label} — ${g.closedLbl}">
+          <span class="clab">${g.closedLbl}</span>
+          ${Array.from({length:g.chips+1},(_,k)=>`<button class="chip" data-chip="${k}" data-id="${it.id}" aria-pressed="false"${dis}>${k}</button>`).join('')}
+          <button class="chip more" data-more data-id="${it.id}" aria-pressed="false"${dis}>${g.chips+1}+</button>
+          <input class="num" id="c-${it.id}" data-id="${it.id}" data-f="closed" ${inputAttrs}${dis} placeholder="${g.chips+1}" aria-label="${it.label} — ${g.closedLbl}, plus de ${g.chips}" hidden>
+        </div>`:''}
+        <div class="formula" id="f-${it.id}"></div>
+      </div>`).join('')}
+    </div>
+    <details class="settings" id="settings">
+      <summary>Réglages : camion et contenance${g.items.some(it=>settings[it.id].fixed!==(DEFAULT_CAMION[it.id]??0)||settings[it.id].per!==g.per)?' <span class="badge">modifié ici</span>':''}</summary>
+      <div class="setgrid">
+        <span class="h">Dosage</span><span class="h">Camion</span><span class="h">Par ${g.container}</span>
+        ${g.items.map(it=>`
+          <span class="lbl">${it.label}<small>équipe : ${DEFAULT_CAMION[it.id]??0}</small></span>
+          <input class="num${n(settings[it.id].fixed)!==(DEFAULT_CAMION[it.id]??0)?' changed':''}" id="sf-${it.id}" data-sid="${it.id}" data-sf="fixed" ${inputAttrs} value="${settings[it.id].fixed??''}" placeholder="0" aria-label="${it.sub} ${it.label} — nombre camion">
+          <input class="num${settings[it.id].per!==g.per?' changed':''}" id="sp-${it.id}" data-sid="${it.id}" data-sf="per" ${inputAttrs} value="${settings[it.id].per}" aria-label="${it.sub} ${it.label} — ${g.unit} par ${g.container}">
+        `).join('')}
+        <div class="foot">
+          <p>Le nombre camion est ajouté au total de chaque dosage. Ces chiffres sont les mêmes pour toute l'équipe et se mettent à jour tout seuls.</p>
+          <p>Une case changée ici (en orange) ne vaut que pour ce téléphone, jusqu'à la prochaine mise à jour de l'équipe. Pour changer pour tout le monde, voir le mode d'emploi.</p>
+          <button class="linkbtn" data-defaults="${g.id}">Revenir aux chiffres de l'équipe</button>
+        </div>
+      </div>
+    </details>
+    <div class="next"><button class="primary" data-goto="${nextTab}">${nextLbl} →</button></div>
+  </section>`;
+  g.items.forEach(it=>{ $('#o-'+it.id).value=data.counts[it.id].open; $('#c-'+it.id).value=data.counts[it.id].closed; syncChips(it.id); refreshRow(it.id); });
+}
+
+function syncChips(id){
+  const it=ALL.find(x=>x.id===id), g=it.g; if(!g.chips) return;
+  const item=main.querySelector(`.item[data-id="${id}"]`); if(!item) return;
+  const v=data.counts[id].closed, big = v!=='' && n(v)>g.chips;
+  item.querySelectorAll('[data-chip]').forEach(b=>b.setAttribute('aria-pressed', v!=='' && n(v)===+b.dataset.chip));
+  const more=item.querySelector('[data-more]'), inp=$('#c-'+id);
+  if(big) inp.hidden=false;
+  else if(v!=='' && document.activeElement!==inp) inp.hidden=true;
+  more.setAttribute('aria-pressed', big);
+}
+
+function refreshRow(id){
+  const it=ALL.find(x=>x.id===id), g=it.g, c=data.counts[id], s=settings[id];
+  const tot=$('#tot-'+id), f=$('#f-'+id); if(!tot) return;
+  const o=$('#o-'+id);
+  if(!filled(id)){ tot.textContent='—'; tot.classList.add('empty'); f.textContent=''; o&&o.classList.remove('bad'); return; }
+  tot.textContent=total(id); tot.classList.remove('empty');
+  let txt = `${n(c.open)} + ${n(c.closed)} × ${s.per} + ${n(s.fixed)} camion = ${total(id)}`;
+  let warn='';
+  if(g.chips && n(c.open)>=s.per) warn = ` <span class="w">${g.container} ouvert ≥ ${s.per} : à vérifier</span>`;
+  else if(c.open!=='' && c.closed==='') warn = ` <span class="w">${g.closedLbl.toLowerCase()} ?</span>`;
+  else if(c.open==='' && c.closed!=='') warn = ` <span class="w">${g.openLbl.toLowerCase()} ?</span>`;
+  o&&o.classList.toggle('bad', !!g.chips && n(c.open)>=s.per);
+  f.innerHTML = txt + warn;
+}
+
+/* ---------- Résultat ---------- */
+function resultText(){
+  let t=`🚌 *Le compte est bus — Bus 31/32*\nComptage du ${todayShort()}\n`;
+  GROUPS.forEach(g=>{
+    t+=`\n*${g.name}* (${g.unit})\n`;
+    g.items.forEach(it=>{ t+=`${it.label} : ${filled(it.id)?total(it.id):'non compté'}\n`; });
+  });
+  return t.trim();
+}
+const waIcon='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.2A9.8 9.8 0 0 0 3.6 17l-1.4 4.8 4.9-1.3A9.8 9.8 0 1 0 12 2.2Zm0 17.8a8 8 0 0 1-4.1-1.1l-.3-.2-2.9.8.8-2.8-.2-.3A8 8 0 1 1 12 20Zm4.4-6c-.2-.1-1.4-.7-1.7-.8-.2-.1-.4-.1-.5.1l-.8.9c-.1.2-.3.2-.5.1a6.6 6.6 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.5-.4h-.5a.9.9 0 0 0-.6.3 2.7 2.7 0 0 0-.9 2c0 1.2.9 2.3 1 2.5.1.2 1.7 2.6 4.2 3.7 1.6.7 2.2.7 3 .6.5-.1 1.4-.6 1.7-1.2.2-.6.2-1.1.1-1.2l-.6-.5Z"/></svg>';
+
+function renderResult(){
+  const missing = ALL.filter(it=>!filled(it.id)).length;
+  main.innerHTML = `
+  <section class="panel">
+    ${resumeBanner()}${lockBanner()}<div class="ghead"><h2><span class="pill">TOTAL</span>Ce qui reste</h2><p>${todayShort()}</p></div>
+    ${missing?`<div class="notice"><span>${missing} dosage(s) pas encore compté(s).</span></div>`:''}
+    <a class="wa" id="wa" href="${waHref()}" target="_blank" rel="noopener">${waIcon}${data.sent?'Renvoyer sur WhatsApp':'Envoyer sur WhatsApp'}</a>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Dosage</th><th>À l'unité</th><th>Fermés</th><th>Camion</th><th>Reste</th></tr></thead>
+      ${GROUPS.map(g=>`<tbody class="${g.id}">
+        <tr class="grp"><td colspan="5">${g.name} · ${g.unit}</td></tr>
+        ${g.items.map(it=>{ const c=data.counts[it.id], s=settings[it.id], st=it.color?` style="--dc:${it.color}"`:'';
+          return filled(it.id)
+          ? `<tr${st}><td>${vial(it.color)}${it.label}</td><td>${n(c.open)}</td><td>${n(c.closed)} × ${s.per}</td><td>${n(s.fixed)}</td><td class="big">${total(it.id)}</td></tr>`
+          : `<tr${st}><td>${vial(it.color)}${it.label}</td><td colspan="4" style="text-align:right"><span class="todo">à compter</span></td></tr>`;
+        }).join('')}
+      </tbody>`).join('')}
+    </table></div>
+    <div class="actions">
+      <button class="secondary" id="copy">Copier le texte</button>
+    </div>
+    <div id="slot"></div>
+  </section>`;
+}
+function waHref(){ return 'https://wa.me/?text='+encodeURIComponent(resultText()); }
+
+function itemName(id){ const it=ALL.find(x=>x.id===id); return it ? it.sub+' '+it.label : ''; }
+function resumeBanner(){
+  if(!showResume) return '';
+  const when = data.saved ? new Date(data.saved) : null;
+  const sameDay = data.date===todayShort();
+  const whenTxt = when ? (sameDay ? 'à '+when.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : 'le '+data.date) : '';
+  const left = ALL.filter(it=>!filled(it.id)).length;
+  return `<div class="resume" role="status">
+    <strong>Comptage repris là où vous l'aviez laissé</strong>
+    <span>Dernière saisie ${whenTxt}${lastId?' : '+itemName(lastId):''}. ${left?left+' dosage(s) restent à compter.':'Tout est compté.'}</span>
+    ${sameDay?'':'<span><b>Attention, ce comptage date d\'un autre jour.</b></span>'}
+    <div><button data-resume-ok>Continuer</button>${sameDay?'':'<button data-resume-new>Nouveau comptage</button>'}</div>
+  </div>`;
+}
+function markHere(){
+  main.querySelectorAll('.item.here').forEach(x=>x.classList.remove('here'));
+  if(lastId){ const el=main.querySelector(`.item[data-id="${lastId}"]`); if(el) el.classList.add('here'); }
+}
+function render(){
+  if(tab==='res') renderResult(); else renderGroup(GROUPS.find(g=>g.id===tab));
+  markHere(); updateChrome();
+}
+
+/* ---------- Bouton Précédent du téléphone ----------
+   Chaque onglet et chaque fenêtre ajoute une étape à l'historique du navigateur :
+   Précédent ferme la fenêtre ouverte, sinon revient à l'onglet d'avant.
+   Sur le premier onglet, un premier appui prévient, le second quitte. */
+const NAV=window.history;
+let modalPushed=false, pendingBack=false, queuedModal=false, exitArmed=false, exitTimer=null;
+function navPush(state){ try{ NAV.pushState(state,''); }catch(e){} }
+window.addEventListener('popstate',e=>{
+  const st=e.state||{};
+  if(pendingBack){ pendingBack=false; if(queuedModal){ queuedModal=false; navPush({cb:'modal'}); modalPushed=true; } return; }
+  if(!$('#modal').hidden){ modalPushed=false; closeModal(true); return; }
+  if(st.cb==='app'){ exitArmed=false; if(ORDER.includes(st.tab) && st.tab!==tab) setTab(st.tab,true); return; }
+  // arrivé au tout début : on prévient avant de quitter
+  if(!exitArmed){
+    exitArmed=true; toast('Appuyez encore sur Précédent pour quitter l\'appli');
+    clearTimeout(exitTimer);
+    exitTimer=setTimeout(()=>{ if(exitArmed){ exitArmed=false; navPush({cb:'app',tab}); } },2500);
+  }
+});
+
+/* ---------- Fenêtres ---------- */
+let lastFocus=null;
+function openModal(html){
+  if(!modalPushed){ if(pendingBack) queuedModal=true; else { navPush({cb:'modal'}); modalPushed=true; } }
+  lastFocus=document.activeElement;
+  if(lastFocus && lastFocus.blur) lastFocus.blur();
+  $('#modal-box').innerHTML=html; $('#modal').hidden=false;
+  document.querySelector('.wrap').inert=true; document.body.style.overflow='hidden';
+  const f=$('#modal-box [data-autofocus]')||$('#modal-box button'); if(f) f.focus();
+}
+function closeModal(fromBack){
+  if(!fromBack && modalPushed){ modalPushed=false; pendingBack=true; try{ NAV.back(); }catch(e){ pendingBack=false; } }
+  $('#modal').hidden=true; $('#modal-box').innerHTML='';
+  document.querySelector('.wrap').inert=false; document.body.style.overflow='';
+  if(lastFocus && lastFocus.focus && !(lastFocus.dataset&&lastFocus.dataset.f)) lastFocus.focus();
+}
+$('#modal').addEventListener('keydown',e=>{
+  if(e.key!=='Tab') return;
+  const f=[...$('#modal-box').querySelectorAll('button,[href],input,[tabindex]:not([tabindex="-1"])')].filter(x=>!x.disabled);
+  if(!f.length) return; const first=f[0], last=f[f.length-1];
+  if(e.shiftKey && document.activeElement===first){ e.preventDefault(); last.focus(); }
+  else if(!e.shiftKey && document.activeElement===last){ e.preventDefault(); first.focus(); }
+});
+$('#modal').addEventListener('click',e=>{ if(e.target.id==='modal' || e.target.closest('[data-close]')) closeModal(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape' && !$('#modal').hidden) closeModal(); });
+
+function askReset(){
+  const done = ALL.filter(it=>filled(it.id));
+  if(!done.length){ toast('Rien à effacer : le comptage est déjà vide'); return; }
+  openModal(`
+    <h3 id="modal-title">Remettre le comptage à zéro ?</h3>
+    <p>${done.length} dosage${done.length>1?'s':''} déjà compté${done.length>1?'s':''} ${done.length>1?'seront effacés':'sera effacé'}. Les chiffres camion sont gardés.</p>
+    <p>En cas d'erreur, le bouton « Annuler » permet de tout retrouver.</p>
+    <div class="btns">
+      <button class="danger" id="reset-yes">Oui, remettre à zéro</button>
+      <button class="secondary" data-close data-autofocus>Non, garder le comptage</button>
+    </div>`);
+}
+function askNewDay(){
+  const left=ALL.filter(it=>!filled(it.id)).length;
+  openModal(`
+    <h3 id="modal-title">Nouveau jour</h3>
+    <p>Le comptage affiché date du <b>${data.date}</b>${data.sent?' et a été envoyé':''}${left?` (${left} dosage${left>1?'s':''} non compté${left>1?'s':''})`:''}.</p>
+    <div class="btns">
+      <button class="primary" id="newday-reset" data-autofocus>Nouveau comptage</button>
+      <button class="secondary" data-close>Reprendre celui du ${data.date}</button>
+    </div>`);
+}
+function doReset(){
+  const b=snap(); ALL.forEach(it=>data.counts[it.id]={open:'',closed:''}); data.date=todayShort(); data.sent=null;
+  lastId=null; showResume=false; before=null;
+  history.push(b); if(history.length>200) history.shift(); future=[];
+  tab='metha'; save(KEYTAB,tab);
+  persist(); closeModal(); render(); window.scrollTo({top:0});
+  toast('Comptage remis à zéro');
+}
+$('#reset').addEventListener('click',askReset);
+$('#modal-box').addEventListener('click',e=>{
+  if(e.target.closest('#reset-yes') || e.target.closest('#newday-reset')) doReset();
+  if(e.target.closest('#do-install')) promptInstall();
+  if(e.target.closest('a.wa')){ setTimeout(()=>{ closeModal(); markSent(); },50); }
+});
+
+/* ---------- Installation sur le téléphone ---------- */
+const ua=navigator.userAgent||'';
+const isIOS=/iphone|ipad|ipod/i.test(ua) || (/macintosh/i.test(ua) && navigator.maxTouchPoints>1);
+const isAndroid=/android/i.test(ua);
+const standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone===true;
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); deferredPrompt=e; });
+window.addEventListener('appinstalled',()=>{ deferredPrompt=null; $('#install').hidden=true; closeModal(); toast('Appli installée sur l\'écran d\'accueil'); });
+if(!standalone && (isIOS||isAndroid)) $('#install').hidden=false;
+
+const shareIcon='<span class="key"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13"/><path d="m7 8 5-5 5 5"/><path d="M5 12v8h14v-8"/></svg></span>';
+const dotsIcon='<span class="key"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></span>';
+function showHowto(){
+  const ios=`<div class="os${isIOS?' mine':''}"><h4>iPhone / iPad${isIOS?' <span class="you">votre téléphone</span>':''}</h4><ol>
+      <li>Ouvrez le lien de l'appli dans <b>Safari</b>.</li>
+      <li>Touchez le bouton <b>Partager</b> ${shareIcon} en bas de l'écran.</li>
+      <li>Faites défiler et choisissez <b>Sur l'écran d'accueil</b>.</li>
+      <li>Touchez <b>Ajouter</b> en haut à droite.</li></ol></div>`;
+  const android=`<div class="os${isAndroid?' mine':''}"><h4>Android${isAndroid?' <span class="you">votre téléphone</span>':''}</h4><ol>
+      <li>Ouvrez le lien de l'appli dans <b>Chrome</b>.</li>
+      <li>Touchez le menu ${dotsIcon} en haut à droite.</li>
+      <li>Choisissez <b>Installer l'application</b> (ou <b>Ajouter à l'écran d'accueil</b>).</li>
+      <li>Confirmez avec <b>Installer</b>.</li></ol></div>`;
+  openModal(`
+    <h3 id="modal-title">Installer l'appli sur son téléphone</h3>
+    <div class="howto">
+      <img class="logo" src="img/logo.jpg" alt="Logo Le compte est bus">
+      ${deferredPrompt?'<button class="primary" id="do-install">Installer maintenant</button>':''}
+      ${isAndroid? android+ios : ios+android}
+      <p class="note">L'icône du bus apparaît ensuite sur l'écran d'accueil et l'appli s'ouvre en plein écran, comme une vraie appli, même sans réseau. Les comptages restent enregistrés sur le téléphone.</p>
+    </div>
+    <button class="secondary" data-close data-autofocus>Fermer</button>`);
+}
+async function promptInstall(){
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  try{ await deferredPrompt.userChoice; }catch(e){}
+  deferredPrompt=null; closeModal();
+}
+$('#install').addEventListener('click',showHowto);
+$('#howto-link').addEventListener('click',showHowto);
+
+/* ---------- Événements de saisie ---------- */
+let before=null, activeInput=null;
+const nextBtn=$('#nextbtn');
+function goNext(from){
+  const ins=[...main.querySelectorAll('input[data-f]')].filter(x=>!x.hidden && !x.disabled);
+  const i=ins.indexOf(from);
+  if(ins[i+1]) ins[i+1].focus(); else { from.blur(); nextBtn.textContent='Suivant ›'; }
+}
+nextBtn.addEventListener('mousedown',e=>e.preventDefault());
+nextBtn.addEventListener('touchstart',e=>e.preventDefault(),{passive:false});
+nextBtn.addEventListener('click',()=>{ if(activeInput) goNext(activeInput); });
+main.addEventListener('focusin',e=>{
+  if(e.target.dataset.f){ before=snap(); activeInput=e.target; nextBtn.hidden=false;
+    const ins=[...main.querySelectorAll('input[data-f]')].filter(x=>!x.hidden && !x.disabled); nextBtn.textContent = ins.indexOf(e.target)===ins.length-1 ? 'Terminé ✓' : 'Suivant ›';
+    setTimeout(()=>e.target.select&&e.target.select(),0); }
+  if(e.target.dataset.sf) setTimeout(()=>e.target.select&&e.target.select(),0);
+});
+main.addEventListener('input',e=>{
+  const el=e.target;
+  if(el.dataset.f){
+    const clean=el.value.replace(/\D/g,'').slice(0,4);
+    if(clean!==el.value) el.value=clean;
+    data.counts[el.dataset.id][el.dataset.f]=clean;
+    lastId=el.dataset.id; markHere();
+    persist(); refreshRow(el.dataset.id);
+    if(el.dataset.f==='closed') syncChips(el.dataset.id);
+  } else if(el.dataset.sf){
+    const clean=el.value.replace(/\D/g,'').slice(0,4); if(clean!==el.value) el.value=clean;
+    const id=el.dataset.sid, s=settings[id];
+    if(el.dataset.sf==='per') return; // appliqué à la sortie du champ (évite 7 au lieu de 70)
+    s.fixed=n(clean); el.classList.toggle('changed', s.fixed!==(DEFAULT_CAMION[id]??0));
+    if(!save(KEYSET,settings)){ saveOK=false; updateStatus(); }
+    refreshRow(id);
+  }
+});
+main.addEventListener('focusout',e=>{
+  if(e.target.dataset.f){ activeInput=null; setTimeout(()=>{ if(!activeInput) nextBtn.hidden=true; },120); }
+  if(e.target.dataset.f && before!==null){ pushHistory(before); before=null; }
+  if(e.target.dataset.f==='closed') syncChips(e.target.dataset.id);
+  if(e.target.dataset.sf==='per'){
+    const id=e.target.dataset.sid, s=settings[id], g=ALL.find(x=>x.id===id).g, v=n(e.target.value);
+    const old=s.per; if(v>0) s.per=v; e.target.value=s.per; e.target.classList.toggle('changed', s.per!==g.per);
+    if(s.per!==old) toast(`${ALL.find(x=>x.id===id).label} : ${s.per} ${g.unit} par ${g.container}`);
+    if(!save(KEYSET,settings)){ saveOK=false; updateStatus(); }
+    refreshRow(id); const hp=main.querySelector('.ghead p'); if(hp) hp.textContent=groupHead(g);
+  }
+  if(e.target.dataset.sf==='fixed' && e.target.value===''){ e.target.value=settings[e.target.dataset.sid].fixed; }
+});
+main.addEventListener('keydown',e=>{
+  if(e.key==='Enter' && e.target.matches('input.num')){
+    e.preventDefault();
+    if(e.target.dataset.f){ goNext(e.target); return; }
+    const ins=[...main.querySelectorAll('input[data-sf]')]; const i=ins.indexOf(e.target);
+    if(ins[i+1]) ins[i+1].focus(); else e.target.blur();
+  }
+});
+main.addEventListener('click',e=>{
+  const chip=e.target.closest('[data-chip]');
+  if(chip){
+    const id=chip.dataset.id, b=snap();
+    data.counts[id].closed=chip.dataset.chip; lastId=id; markHere();
+    const inp=$('#c-'+id); inp.value=chip.dataset.chip; inp.hidden=true;
+    persist(); pushHistory(b); syncChips(id); refreshRow(id);
+    const items=[...main.querySelectorAll('.item')]; const nx=items[items.findIndex(x=>x.dataset.id===id)+1];
+    if(nx){ const o=nx.querySelector('input[data-f="open"]'); if(o && o.value==='') o.focus({preventScroll:false}); }
+    return;
+  }
+  if(e.target.closest('[data-resume-ok]')){ showResume=false; render(); return; }
+  if(e.target.closest('[data-resume-new]')){ askNewDay(); return; }
+  if(e.target.closest('[data-unlock]')){ data.sent=null; persist(); render(); toast('Saisies déverrouillées'); return; }
+  const wa=e.target.closest('a.wa');
+  if(wa){
+    const iss=issues();
+    if(iss.length){ e.preventDefault();
+      openModal(`<h3 id="modal-title">Vérifier avant d'envoyer</h3>
+        <p>${iss.length} point${iss.length>1?'s':''} à regarder :</p>
+        <ul class="issues">${iss.map(x=>`<li>${x}</li>`).join('')}</ul>
+        <div class="btns">
+          <button class="primary" data-close data-autofocus>Compléter d'abord</button>
+          <a class="wa" href="${waHref()}" target="_blank" rel="noopener">${waIcon}Envoyer quand même</a>
+        </div>`);
+      return;
+    }
+    setTimeout(markSent,50); return;
+  }
+  const more=e.target.closest('[data-more]');
+  if(more){ const inp=$('#c-'+more.dataset.id); inp.hidden=false; more.setAttribute('aria-pressed','true'); inp.focus(); return; }
+  const go=e.target.closest('[data-goto]'); if(go){ setTab(go.dataset.goto); return; }
+  if(e.target.closest('[data-open-settings]')){ const d=$('#settings'); d.open=true; d.scrollIntoView({behavior:'smooth',block:'start'}); return; }
+  const def=e.target.closest('[data-defaults]');
+  if(def){
+    const g=GROUPS.find(x=>x.id===def.dataset.defaults);
+    g.items.forEach(it=>{ settings[it.id].fixed=DEFAULT_CAMION[it.id]??0; settings[it.id].per=g.per; });
+    save(KEYSET,settings); render(); $('#settings').open=true; toast('Chiffres de l\'équipe remis pour '+g.name);
+    return;
+  }
+  if(e.target.id==='copy'){ copyResult(); return; }
+});
+
+function copyResult(){
+  const txt=resultText().replace(/\*/g,'');
+  const fallback=()=>{ $('#slot').innerHTML=`<textarea class="copyfb" readonly></textarea>`; const ta=$('#slot textarea'); ta.value=txt; ta.focus(); ta.select(); toast('Texte sélectionné : copiez-le'); };
+  try{ navigator.clipboard.writeText(txt).then(()=>toast('Résultat copié'),fallback); }catch(err){ fallback(); }
+}
+
+function setTab(t,fromBack){ if(!fromBack && t!==tab){ exitArmed=false; navPush({cb:'app',tab:t}); } tab=t; save(KEYTAB,t); persist(); render(); window.scrollTo({top:0}); }
+document.querySelector('.tabs').addEventListener('click',e=>{ const b=e.target.closest('[data-tab]'); if(b) setTab(b.dataset.tab); });
+
+function restore(json){
+  let o; try{ o=JSON.parse(json); }catch(e){ return; }
+  if(isObj(o) && isObj(o.c)){ data.counts=o.c; if(typeof o.d==='string') data.date=o.d; }
+  else if(isObj(o)) data.counts=o; // ancien format
+  ALL.forEach(it=>{ if(!isObj(data.counts[it.id])) data.counts[it.id]={open:'',closed:''}; });
+  if(data.date!==todayShort()) showResume=true;
+  persist(); render();
+}
+function blurCount(){ const a=document.activeElement; if(a && a.dataset && a.dataset.f) a.blur(); }
+function undo(){ blurCount(); if(!history.length) return; future.push(snap()); restore(history.pop()); toast('Saisie annulée'); }
+function redo(){ blurCount(); if(!future.length) return; history.push(snap()); restore(future.pop()); toast('Saisie rétablie'); }
+$('#undo').addEventListener('click',undo);
+$('#redo').addEventListener('click',redo);
+document.addEventListener('keydown',e=>{
+  if(!$('#modal').hidden) return;
+  if(document.activeElement && document.activeElement.dataset && document.activeElement.dataset.sf) return;
+  if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='z' && !e.shiftKey){ e.preventDefault(); undo(); }
+  else if((e.ctrlKey||e.metaKey) && (e.key.toLowerCase()==='y' || (e.shiftKey && e.key.toLowerCase()==='z'))){ e.preventDefault(); redo(); }
+});
+
+// Sauvegarde de sécurité : toutes les 10 s, quand l'appli passe en arrière-plan, et en cas d'erreur
+setInterval(persist,10000);
+function checkDay(){
+  const d=new Date().toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});
+  if($('#date').textContent!==d){ $('#date').textContent=d; if(resumedNow() && data.date!==todayShort() && $('#modal').hidden){ showResume=true; render(); askNewDay(); } }
+}
+function resumedNow(){ return ALL.some(it=>{ const c=data.counts[it.id]; return c.open!==''||c.closed!==''; }); }
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') persist(); else checkDay(); });
+setInterval(checkDay,60000);
+window.addEventListener('pagehide',persist);
+window.addEventListener('error',()=>{ try{ persist(); }catch(e){} });
+
+// Fonctionnement hors connexion une fois installée
+if('serviceWorker' in navigator && location.protocol==='https:'){
+  try{ navigator.serviceWorker.register('sw.js').catch(()=>{}); }catch(e){}
+}
+
+if(data.tab && ORDER.includes(data.tab)) tab=data.tab;
+try{ NAV.replaceState({cb:'base'},''); }catch(e){}
+navPush({cb:'app',tab});
+render();
+persist();
+if(camionUpdated) setTimeout(()=>toast('Chiffres camion mis à jour pour toute l\'équipe'),400);
+if(showResume && data.date!==todayShort()) askNewDay();
+else if(showResume && lastId){ const el=main.querySelector(`.item[data-id="${lastId}"]`); if(el) setTimeout(()=>el.scrollIntoView({block:'center'}),50); }
+})();
+</script>
+</body>
+</html>
