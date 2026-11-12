@@ -285,7 +285,7 @@ const ALL = GROUPS.flatMap(g=>g.items.map(it=>({...it, g})));
 
 const KEY='csapa-comptage-v1', KEYSET='csapa-reglages-v1', KEYTAB='csapa-onglet';
 const KEYBAK=KEY+'-copie', KEYHIST='csapa-historique-v1', KEYTEAMTS='csapa-chiffres-equipe-date';
-const TEAM_URL='https://zsgekjidtzwypjssglbx.supabase.co/rest/v1', TEAM_KEY='sb_publishable_H-6I3DxUjDAq8H03OgxusA_9C0DB9HS';
+const TEAM_URL='https://lmyrneexelilsncmtliz.supabase.co/rest/v1', TEAM_KEY='sb_publishable_bQ2lTdxT2rzSLqrvUhLPSQ_j10PUtlr';
 function todayShort(){ return new Date().toLocaleDateString('fr-FR'); }
 function load(k,def){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch(e){ return def; } }
 function save(k,v){ try{ const t=JSON.stringify(v); localStorage.setItem(k,t); return localStorage.getItem(k)===t; }catch(e){ return false; } }
