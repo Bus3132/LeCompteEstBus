@@ -1,6 +1,6 @@
 // Le compte est bus — permet d'ouvrir l'appli même sans réseau.
 // Toujours la version en ligne d'abord ; la copie en cache sert seulement hors connexion.
-const CACHE = 'compte-est-bus-v13';
+const CACHE = 'compte-est-bus-v14';
 const TIMEOUT_MS = 3500; // au-delà, on sert la copie locale (réseau faible dans le bus)
 const FILES = [
   './',
@@ -10,6 +10,7 @@ const FILES = [
   './img/logo.jpg',
   './img/icon-192.png',
   './img/icon-512.png',
+  './img/icon-maskable-512.png',
   './img/apple-touch-icon.png',
   './img/favicon.png',
   './fonts/permanent-marker.woff2',

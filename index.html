@@ -40,6 +40,7 @@
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 img{max-width:100%}
 html{-webkit-text-size-adjust:100%;scroll-padding-top:200px;scroll-padding-bottom:24px}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.4;
@@ -59,7 +60,7 @@ button:focus-visible,input:focus-visible,a:focus-visible,summary:focus-visible{o
 .brand .txt{flex:1;min-width:0}
 .wordmark{margin:0;white-space:nowrap;font-family:var(--f-brand);font-weight:400;font-size:clamp(20px,6.2vw,28px);line-height:.95;color:var(--navy);letter-spacing:.01em;transform:rotate(-2deg);transform-origin:left center}
 .wordmark .est{color:var(--grey);font-size:.82em}
-.wordmark .bus{color:var(--orange);font-size:1.12em}
+.wordmark .bus{color:var(--orange);font-size:1.12em;-webkit-text-stroke:1.5px var(--navy);paint-order:stroke fill}
 .brand .row2{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px}
 .tagline{margin:0;font-size:13px;color:var(--muted);display:flex;flex-wrap:wrap;gap:2px 8px;align-items:center}
 .tagline b{color:var(--navy)}
@@ -68,14 +69,33 @@ button:focus-visible,input:focus-visible,a:focus-visible,summary:focus-visible{o
 .installbtn svg{width:16px;height:16px}
 
 /* ---------- Barre collante ---------- */
-@media (max-height:500px){ header{position:static!important} html{scroll-padding-top:16px} }
+@media (max-height:500px){ html:not(.typing) header{position:static} html:not(.typing){scroll-padding-top:16px} }
+/* Pendant la saisie : en-tête réduit aux onglets, barre « Suivant » collée au-dessus du clavier */
+html.typing{scroll-padding-top:90px;scroll-padding-bottom:96px}
+html.typing body{padding-bottom:96px}
+/* la barre d'outils (52 px) passe au-dessus du bord : rien ne bouge sous le doigt, seuls les onglets restent collés */
+html.typing header{top:calc(env(safe-area-inset-top,0px) - 52px)}
+.nextwrap{position:fixed;left:0;right:0;bottom:0;z-index:8;background:var(--bg);border-top:1px solid var(--line);box-shadow:0 -8px 18px -14px var(--navy);
+  padding:8px max(16px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.nextwrap .nextbar{display:block;max-width:560px;margin:0 auto}
 header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:8px 10px;display:grid;gap:8px;border-bottom:1px solid var(--line)}
 .toolbar{display:flex;gap:6px}
 .nextbar{width:100%;min-height:46px;border:0;border-radius:12px;background:var(--navy);color:#fff;font-weight:700;font-size:17px}
 .notice.lock{background:#e8f0fb;color:var(--navy)}
 .notice.lock button,.notice button.strong{border:1.5px solid currentColor;text-decoration:none;border-radius:9px;padding:6px 10px}
-.panel.locked input.num,.panel.locked .chip{opacity:.55}
-.issues{margin:0;padding:10px 12px;background:var(--warn-bg);color:var(--warn);border-radius:10px;font-size:15px;display:grid;gap:4px;list-style:none}
+/* Verrouillé : chiffres en plein contraste, cadenas dans le champ */
+.panel.locked input.num:disabled{opacity:1;color:var(--ink);-webkit-text-fill-color:var(--ink);background:#eef1f6 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235d6779' stroke-width='2.2' stroke-linecap='round'%3E%3Crect x='5' y='11' width='14' height='10' rx='2'/%3E%3Cpath d='M8 11V8a4 4 0 0 1 8 0v3'/%3E%3C/svg%3E") no-repeat right 6px top 6px/13px;border-style:dashed}
+.panel.locked .chip:disabled{opacity:1;color:var(--ink);border-style:dashed}
+.panel.locked .chip[aria-pressed="true"]{border-style:solid}
+.notice.lock .lockbtns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.notice.lock .lockbtns button{min-height:44px}
+.issues{margin:0;padding:6px;background:var(--warn-bg);color:var(--warn);border-radius:10px;font-size:15px;display:grid;gap:2px;list-style:none}
+.issues button{width:100%;min-height:44px;text-align:left;border:0;background:transparent;color:inherit;font-weight:700;padding:8px 8px;border-radius:8px;text-decoration:underline;text-underline-offset:3px}
+.issues button::after{content:" ›";text-decoration:none}
+.issues button:hover{background:color-mix(in srgb,var(--warn) 10%,transparent)}
+.dialog a.wa.ghost{background:var(--surface);color:var(--wa);border:1.5px solid var(--wa);font-size:15px;padding:11px 14px;font-weight:700}
+.dialog a.wa.ghost svg{width:20px;height:20px}
+.dialog p.small{font-size:13px}
 .dialog a.wa{font-size:17px;padding:14px 16px}
 .dialog .primary{padding:15px 16px;font-size:17px}
 .tbtn{border:1px solid var(--line);background:var(--surface);border-radius:10px;height:44px;min-width:44px;padding:0 10px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:14px;font-weight:700;color:var(--navy)}
@@ -88,6 +108,7 @@ header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var
 .tabs{display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:3px;gap:3px}
 .tabs button{border:0;background:transparent;border-radius:9px;min-height:44px;padding:9px 2px;font-size:14px;font-weight:700;display:flex;justify-content:center;align-items:center;gap:5px;min-width:0}
 .tabs button[aria-selected="true"]{background:var(--g,var(--navy));color:var(--on-g,#fff)}
+.tabs button[aria-selected="false"][data-tab]:not([data-tab="res"]){box-shadow:inset 0 -3px 0 color-mix(in srgb,var(--g) 70%,transparent)}
 .tabs [data-tab="metha"]{--g:var(--metha);--on-g:var(--on-metha)} .tabs [data-tab="bupre"]{--g:var(--bupre);--on-g:var(--on-bupre)} .tabs [data-tab="oro"]{--g:var(--oro);--on-g:var(--on-oro)}
 .tabs button[aria-selected="true"] .badge{background:color-mix(in srgb,#fff 28%,transparent);color:inherit}
 .badge{font-family:var(--f-num);font-size:11px;min-width:18px;padding:1px 5px;border-radius:99px;background:var(--warn-bg);color:var(--warn)}
@@ -112,7 +133,7 @@ main{padding-top:10px}
 .resume{background:var(--surface);border:1.5px solid var(--blue);border-radius:12px;padding:10px 12px;font-size:14px;display:grid;gap:8px}
 .resume strong{font-size:15px;color:var(--navy)}
 .resume div{display:flex;gap:8px;flex-wrap:wrap}
-.resume button{border:1px solid var(--line);background:var(--field);border-radius:10px;padding:8px 12px;font-weight:700;font-size:14px}
+.resume button{border:1px solid var(--line);background:var(--field);border-radius:10px;min-height:44px;padding:8px 14px;font-weight:700;font-size:15px}
 
 .list{background:var(--surface);border:1px solid var(--line);border-top:5px solid var(--g,var(--line));border-radius:14px;overflow:hidden}
 .cols,.row{display:grid;grid-template-columns:minmax(72px,1.1fr) 1fr 1fr minmax(64px,.9fr);gap:8px;align-items:center;padding:0 12px}
@@ -124,6 +145,11 @@ main{padding-top:10px}
 .item.here{box-shadow:inset 0 0 0 2px rgba(13,42,94,.28)}
 .dose{font-weight:700;font-size:17px;line-height:1.1;border-left:6px solid var(--dc,var(--g));padding-left:8px;display:flex;align-items:center;gap:7px;color:var(--navy)}
 .dose small{display:block;font-weight:400;font-size:12px;color:var(--muted)}
+/* Produit écrit sur chaque ligne (Bupré et Oro se ressemblent) */
+.ptag{display:inline-block;width:max-content;margin-top:3px;font-family:var(--f-body);font-size:11px;font-weight:700;letter-spacing:.05em;line-height:1.3;padding:1px 6px;border-radius:5px;background:var(--g);color:var(--on-g);vertical-align:2px}
+.dose small.ptag{display:block;color:var(--on-g);font-weight:700;font-size:11px}
+td .dl{display:inline-block;vertical-align:middle}
+td .ptag{display:block;margin:1px 0 0;font-size:10.5px;padding:0 5px}
 .vial{width:15px;height:24px;flex:0 0 auto;color:var(--muted)}
 input.num{width:100%;min-width:0;height:48px;border:1.5px solid var(--line);background:#fff;color:var(--ink);border-radius:10px;
   font-family:var(--f-num);font-size:22px;font-weight:600;text-align:center;font-variant-numeric:tabular-nums;padding:0 4px}
@@ -137,24 +163,35 @@ input.num.bad{border-color:var(--warn)}
 .formula .w{color:var(--warn);font-family:var(--f-body);font-weight:700}
 
 /* Cartons fermés : boutons 0 à 6 */
-.chips{display:flex;align-items:center;gap:6px;padding:0 12px;flex-wrap:wrap}
+.chips{display:flex;align-items:center;gap:4px;padding:4px 6px;margin:-4px 6px 0;flex-wrap:wrap;border-radius:12px}
+.chips:focus{outline:3px solid var(--orange);outline-offset:0;background:color-mix(in srgb,#fff 55%,transparent)}
 .chips .clab{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);width:100%}
-.chip{flex:1 1 0;min-width:36px;height:46px;border:1.5px solid var(--line);background:#fff;border-radius:10px;
+/* 8 pastilles sur une rangée même à 360 px ; la zone tactile déborde dans les espaces entre elles */
+.chip{position:relative;flex:1 1 0;min-width:0;height:48px;border:1.5px solid var(--line);background:#fff;border-radius:10px;
   font-family:var(--f-num);font-size:18px;font-weight:600;font-variant-numeric:tabular-nums;padding:0}
-.chip.more{font-size:15px;flex:1.2 1 0}
+.chip::after{content:"";position:absolute;inset:-3px -3.5px}
+.chip.more{font-size:15px;flex:1.15 1 0}
+.morefield{flex:1 0 100%;display:flex;align-items:center;gap:10px;margin-top:4px;font-weight:700;color:var(--navy)}
 .chip[aria-pressed="true"]{background:var(--dc,var(--g));border-color:var(--navy);box-shadow:inset 0 0 0 2px var(--navy);color:#1b1b1b;font-weight:800}
 .chip:not([aria-pressed="true"]):hover{border-color:var(--dc,var(--g))}
-.chips input.num{flex:0 0 76px;height:42px;font-size:18px}
+.chips input.num{flex:0 0 96px;height:46px;font-size:20px}
 
-details.settings{scroll-margin-top:150px;background:var(--surface);border:1px solid var(--line);border-radius:14px}
-details.settings summary{padding:12px 14px;cursor:pointer;font-weight:700;font-size:15px;color:var(--navy)}
+.teamwarn{background:var(--warn-bg);color:var(--warn);border:1.5px solid var(--warn);border-radius:12px;padding:12px 14px;font-size:15px}
+.sethelp{margin:0;font-size:14px;color:var(--muted)}
+.setcard{background:var(--surface);border:1px solid var(--line);border-top:5px solid var(--g,var(--line));border-radius:14px;overflow:hidden}
+.setcard h3{margin:0;padding:12px 14px 8px;font-size:17px;color:var(--navy)}
 .setgrid{display:grid;grid-template-columns:1fr 88px 88px;gap:8px 10px;align-items:center;padding:0 14px 14px}
+.setgrid .lbl{display:flex;align-items:center;gap:6px}
+.change{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 12px;background:var(--field);border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--navy);font-weight:700}
+.change b{font-family:var(--f-num);font-size:22px}
+.change s{color:var(--muted);font-weight:600}
+.pwrow{display:flex;gap:8px}
+.pwrow input{flex:1 1 0;width:0;min-width:0}
+.pwrow .secondary{flex:0 0 auto;min-height:48px;padding:0 14px;font-size:15px}
 .setgrid .h{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .setgrid .lbl{font-weight:700}
 .setgrid .lbl small{display:block;font-weight:400;font-size:12px;color:var(--muted)}
 .setgrid input.num{height:44px;font-size:18px}
-.setgrid .foot{grid-column:1/-1;display:grid;gap:8px;margin-top:4px}
-.setgrid .foot p{margin:0;font-size:13px;color:var(--muted)}
 .linkbtn{justify-self:start;border:1px solid var(--line);background:var(--field);border-radius:10px;padding:8px 12px;font-weight:700;font-size:14px;color:var(--navy)}
 
 .next{display:flex;justify-content:flex-end}
@@ -167,15 +204,26 @@ a.wa svg{width:24px;height:24px}
 table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
 th,td{padding:9px 8px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
 th:first-child,td:first-child{text-align:left}
-thead th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}
+thead th,tr.sub th{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:700;white-space:normal;vertical-align:bottom;line-height:1.2}
+tr.sub th{background:#fff;padding-top:4px}
 td{font-family:var(--f-num);font-size:15px}
-@media (max-width:420px){ th,td{padding:8px 5px} td{font-size:14px} td.big{font-size:17px} thead th{font-size:10px;letter-spacing:.03em} }
+@media (max-width:420px){ th,td{padding:8px 4px} td{font-size:14px} td.big{font-size:17px} tr.sub th{font-size:12px;letter-spacing:0;text-transform:none} td .flag{font-size:13px} }
+@media (max-width:370px){ th,td{padding:8px 3px} th:first-child,td:first-child{padding-left:6px} }
 td:first-child{font-family:var(--f-body);font-weight:700;color:var(--navy)}
 td .vial{vertical-align:middle;margin-right:6px;width:12px;height:19px}
 td.big{font-size:19px;font-weight:700;color:var(--navy)}
 tbody tr:not(.grp){background:color-mix(in srgb,var(--dc,var(--g)) 9%,#fff)}
 tr.grp td{font-family:var(--f-brand);font-weight:400;font-size:16px;letter-spacing:.02em;padding-top:14px;border-bottom:3px solid var(--g);color:var(--navy);background:#fff}
 tr:last-child td{border-bottom:0}
+.runinfo{margin:-6px 0 0;font-size:14px;color:var(--muted);display:flex;flex-wrap:wrap;gap:2px 10px}
+.runinfo b{color:var(--navy)}
+td .q{color:var(--warn);font-family:var(--f-body);font-weight:700}
+td .flag{color:var(--warn);font-family:var(--f-body)}
+tr.chk td.big{color:var(--warn)}
+details.prev{background:var(--surface);border:1px solid var(--line);border-radius:14px}
+details.prev summary{padding:12px 14px;min-height:44px;cursor:pointer;font-weight:700;font-size:15px;color:var(--navy)}
+details.prev .tablewrap{border:0;border-top:1px solid var(--line);border-radius:0 0 14px 14px}
+tr.diff td:not(:first-child){font-weight:700;color:var(--warn)}
 td .todo{font-family:var(--f-body);font-size:12px;font-weight:700;color:var(--warn);background:var(--warn-bg);padding:2px 8px;border-radius:99px}
 .actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between}
 textarea.copyfb{width:100%;height:180px;font-family:var(--f-num);font-size:13px;background:var(--field);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px}
@@ -242,24 +290,27 @@ footer button{border:0;background:transparent;color:var(--blue);text-decoration:
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg><span>Remise à zéro</span>
       </button>
     </div>
-    <div class="tabs" role="tablist">
-      <button role="tab" data-tab="metha">Métha <span class="badge" id="b-metha"></span></button>
-      <button role="tab" data-tab="bupre">Bupré <span class="badge" id="b-bupre"></span></button>
-      <button role="tab" data-tab="oro">Oro <span class="badge" id="b-oro"></span></button>
-      <button role="tab" data-tab="res">Résultat</button>
+    <div class="tabs" role="tablist" aria-label="Étapes du comptage">
+      <button role="tab" id="tab-metha" aria-controls="main" data-tab="metha">Métha <span class="badge" id="b-metha"></span></button>
+      <button role="tab" id="tab-bupre" aria-controls="main" data-tab="bupre">Bupré <span class="badge" id="b-bupre"></span></button>
+      <button role="tab" id="tab-oro" aria-controls="main" data-tab="oro">Oro <span class="badge" id="b-oro"></span></button>
+      <button role="tab" id="tab-res" aria-controls="main" data-tab="res">Résultat</button>
     </div>
-    <button class="nextbar" id="nextbtn" hidden>Suivant ›</button>
   </header>
   <div class="status" id="status" aria-live="polite"><span class="dot"></span><span id="status-txt">Prêt</span></div>
 
   <main id="main"></main>
+  <div class="sr" id="live" aria-live="polite"></div>
 
   <footer>
     <div class="brush" aria-hidden="true"></div>
     <span>Le compte est bus · Bus 31/32 · Marseille</span>
+    <button id="settings-link">Réglages camion (communs à toute l'équipe)</button>
     <button id="howto-link">Comment installer l'appli sur son téléphone</button>
   </footer>
 </div>
+
+<div class="nextwrap" id="nextwrap" hidden><button class="nextbar" id="nextbtn">Suivant ›</button></div>
 
 <div class="overlay" id="modal" hidden>
   <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="modal-title" id="modal-box"></div>
@@ -282,20 +333,20 @@ const DEFAULT_CAMION = {
 
 // Couleurs des étiquettes des flacons de sirop Méthadone AP-HP
 const METHA_COLORS={5:'#f3a6c4',10:'#f8b234',20:'#aab0b7',40:'#8fc740',60:'#3db5e6'};
-function vial(c){ return c ? `<svg class="vial" viewBox="0 0 15 24" aria-hidden="true"><rect x="3.5" y="0.5" width="8" height="5" rx="1.2" fill="${c}"/><rect x="1" y="5.5" width="13" height="18" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="2.6" y="12" width="9.8" height="10" rx="1.4" fill="${c}"/></svg>` : ''; }
+function vial(c){ return c ? `<svg class="vial" viewBox="0 0 15 24" aria-hidden="true"><rect x="3.5" y="0.5" width="8" height="5" rx="1.2" fill="${c}" stroke="#14203a" stroke-opacity=".6" stroke-width=".9"/><rect x="1" y="5.5" width="13" height="18" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="2.6" y="12" width="9.8" height="10" rx="1.4" fill="${c}" stroke="#14203a" stroke-opacity=".6" stroke-width=".9"/></svg>` : ''; }
 const GROUPS = [
   { id:'metha', short:'MÉTHA', name:'Méthadone', unit:'flacons', container:'carton', openLbl:'Carton ouvert', closedLbl:'Cartons fermés', per:70, chips:6,
     items:[5,10,20,40,60].map(d=>({id:'m'+d, label:d+' mg', sub:'Méthadone', color:METHA_COLORS[d]})) },
-  { id:'bupre', short:'BUPRÉ', name:'Buprénorphine', unit:'cp', container:'boîte', openLbl:'Nombre de comprimés', closedLbl:'Boîtes fermées', per:7,
+  { id:'bupre', short:'BUPRÉ', name:'Buprénorphine', unit:'cp', container:'boîte', openLbl:'Comprimés hors boîte', closedLbl:'Boîtes fermées', per:7,
     items:[0.4,1,2,4,6,8].map(d=>({id:'b'+String(d).replace('.','_'), label:String(d).replace('.',',')+' mg', sub:'Bupré'})) },
-  { id:'oro', short:'ORO', name:'Orobupré', unit:'cp', container:'boîte', openLbl:'Nombre de comprimés', closedLbl:'Boîtes fermées', per:7,
+  { id:'oro', short:'ORO', name:'Orobupré', unit:'cp', container:'boîte', openLbl:'Comprimés hors boîte', closedLbl:'Boîtes fermées', per:7,
     items:[2,8].map(d=>({id:'o'+d, label:d+' mg', sub:'Orobupré'})) }
 ];
 const ORDER=['metha','bupre','oro','res'];
 const ALL = GROUPS.flatMap(g=>g.items.map(it=>({...it, g})));
 
 const KEY='csapa-comptage-v1', KEYSET='csapa-reglages-v1', KEYTAB='csapa-onglet';
-const KEYBAK=KEY+'-copie', KEYHIST='csapa-historique-v1', KEYTEAMTS='csapa-chiffres-equipe-date', KEYTEAMCODE='csapa-chiffres-equipe-code';
+const KEYBAK=KEY+'-copie', KEYPREV='csapa-comptages-precedents-v1', KEYHIST='csapa-historique-v1', KEYTEAMTS='csapa-chiffres-equipe-date', KEYTEAMCODE='csapa-chiffres-equipe-code';
 const TEAM_URL='https://lmyrneexelilsncmtliz.supabase.co/rest/v1', TEAM_KEY='sb_publishable_bQ2lTdxT2rzSLqrvUhLPSQ_j10PUtlr';
 function todayShort(){ return new Date().toLocaleDateString('fr-FR'); }
 function load(k,def){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch(e){ return def; } }
@@ -309,6 +360,11 @@ let data = load(KEY,null);
 if(!isObj(data) || !isObj(data.counts)) data = load(KEYBAK,null);
 if(!isObj(data) || !isObj(data.counts)) data = { date: todayShort(), counts:{} };
 if(typeof data.date!=='string') data.date = todayShort();
+// Plusieurs comptages par jour : data.run = numéro du comptage du jour (1 si absent : anciennes sauvegardes)
+if(!(n(data.run)>0)) data.run=1; else data.run=n(data.run);
+if(typeof data.prevTime!=='number') data.prevTime=null;
+let prevRuns=load(KEYPREV,[]); if(!Array.isArray(prevRuns)) prevRuns=[];
+prevRuns=prevRuns.filter(x=>isObj(x) && typeof x.date==='string' && isObj(x.tot));
 ALL.forEach(it=>{ const c=data.counts[it.id]; if(!isObj(c)) data.counts[it.id]={open:'',closed:''}; else { c.open=String(c.open??'').replace(/\D/g,''); c.closed=String(c.closed??'').replace(/\D/g,''); } });
 const resumed = ALL.some(it=>{ const c=data.counts[it.id]; return c.open!==''||c.closed!==''; });
 
@@ -332,12 +388,14 @@ const main=$('#main');
 $('#date').textContent = new Date().toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});
 
 function filled(id){ const c=data.counts[id]; return c.open!=='' || c.closed!==''; }
+// Une dose n'est complète que si toutes ses parties sont saisies (un 0 tapé compte)
+function complete(id){ const c=data.counts[id]; return c.open!=='' && c.closed!==''; }
 function total(id){ const c=data.counts[id], s=settings[id]; return n(c.open) + n(c.closed)*s.per + n(s.fixed); }
 let lastSnap=null;
 function persist(){
   const cur=snap(), changed = cur!==lastSnap;
   if(changed && lastSnap!==null) data.saved=Date.now();
-  lastSnap=cur; data.last=lastId; data.tab=tab;
+  lastSnap=cur; data.last=lastId; data.tab = tab==='set' ? backTab : tab;
   const ok1=save(KEY,data), ok2=save(KEYBAK,data);
   save(KEYHIST,{history:history.slice(-60),future:future.slice(-60)});
   const wasOK=saveOK; saveOK = ok1||ok2;
@@ -352,39 +410,65 @@ function updateStatus(){
   tx.textContent = !saveOK ? 'Sauvegarde impossible sur ce navigateur : ne fermez pas la page avant d\'avoir envoyé le résultat.'
     : savedAt ? 'Dernière saisie enregistrée à '+hhmm(savedAt) : 'Enregistrement automatique activé';
 }
-function snap(){ return JSON.stringify({c:data.counts,d:data.date}); }
+function snap(){ return JSON.stringify({c:data.counts,d:data.date,r:data.run,p:data.prevTime}); }
 function pushHistory(before){ if(before===snap()) return; history.push(before); if(history.length>200) history.shift(); future=[]; persist(); }
 function toast(msg){ const t=$('#toast'); t.textContent=msg; t.hidden=false; clearTimeout(toast._t); toast._t=setTimeout(()=>t.hidden=true,3500); }
 
 function updateChrome(){
-  $('#undo').disabled = history.length===0;
-  $('#redo').disabled = future.length===0;
+  // Comptage envoyé = verrouillé : seul « Modifier » le rouvre
+  $('#undo').disabled = !!data.sent || history.length===0;
+  $('#redo').disabled = !!data.sent || future.length===0;
   GROUPS.forEach(g=>{
-    const left = g.items.filter(it=>!filled(it.id)).length;
+    const left = g.items.filter(it=>!complete(it.id)).length;
     const b=$('#b-'+g.id); b.textContent = left ? left : '✓'; b.classList.toggle('done', !left);
     b.title = left ? left+(left>1?' dosages':' dosage')+' à compter' : 'Tout est compté';
   });
-  document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected', b.dataset.tab===tab));
+  document.querySelectorAll('.tabs button').forEach(b=>{ const on=b.dataset.tab===tab; b.setAttribute('aria-selected', on); b.tabIndex = on || (tab==='set' && b.dataset.tab===backTab) ? 0 : -1; });
+  if(tab==='set'){ main.removeAttribute('role'); main.removeAttribute('aria-labelledby'); }
+  else { main.setAttribute('role','tabpanel'); main.setAttribute('aria-labelledby','tab-'+tab); }
 }
 
 const inputAttrs='inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" autocomplete="off"';
 
 /* ---------- Envoi / verrouillage ---------- */
-function markSent(){ data.sent=Date.now(); persist(); render(); toast('Comptage envoyé et verrouillé'); }
+function markSent(){ askedSent=false; data.sent=Date.now(); persist(); render(); toast('Comptage envoyé et verrouillé'); }
+/* WhatsApp s'ouvre, mais on ne verrouille qu'une fois l'envoi confirmé (le partage a pu être annulé) */
+let askedSent=false;
+function askSent(){
+  if(data.sent) return;
+  askedSent=false;
+  openModal(`
+    <h3 id="modal-title">Le message est bien parti ?</h3>
+    <p>Si oui, le comptage est verrouillé. «\u202fModifier\u202f» permettra encore de corriger une case.</p>
+    <div class="btns">
+      <button class="primary" id="sent-yes">Oui, verrouiller</button>
+      <button class="secondary" data-close data-autofocus>Non, pas encore</button>
+    </div>`);
+}
+function ordinal(k){ return k===1 ? '1er' : k+'e'; }
+function countTime(o){ return o.sent || o.saved || o.started || null; }
+function countTitle(){
+  return data.run>1 ? `${ordinal(data.run)} comptage du ${data.date}${data.prevTime?` (remplace celui de ${hhmm(new Date(data.prevTime))})`:''}` : `Comptage du ${data.date}`;
+}
+function lastEntryTxt(){
+  if(!data.saved || !ALL.some(it=>filled(it.id))) return '';
+  const d=new Date(data.saved), day=d.toLocaleDateString('fr-FR');
+  return 'dernière saisie '+(day===data.date ? '' : 'le '+day.slice(0,5)+' ')+'à '+hhmm(d);
+}
 function fmtTs(ts){ const d=new Date(ts); return d.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'})+' à '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }
-function lockBanner(){ return data.sent ? `<div class="notice lock"><span>Comptage envoyé ${fmtTs(data.sent)}. Les saisies sont verrouillées.</span><button data-unlock>Modifier</button></div>` : ''; }
+function lockBanner(){ return data.sent ? `<div class="notice lock"><span>Comptage envoyé ${fmtTs(data.sent)}. Les saisies sont verrouillées.</span><span class="lockbtns"><button data-unlock title="Rouvrir les cases pour corriger une erreur">Modifier</button><button data-recount title="Recommencer tout le comptage (le précédent reste visible)">Recompter</button></span></div>` : ''; }
 
 /* ---------- Vérification avant envoi ---------- */
-function issues(){
-  const out=[];
-  ALL.forEach(it=>{ const c=data.counts[it.id], s=settings[it.id], g=it.g;
-    if(!filled(it.id)) out.push(`${it.sub} ${it.label} : non compté`);
-    else if(c.open==='') out.push(`${it.sub} ${it.label} : ${g.openLbl.toLowerCase()} ?`);
-    else if(c.closed==='') out.push(`${it.sub} ${it.label} : ${g.closedLbl.toLowerCase()} ?`);
-    else if(g.chips && n(c.open)>=s.per) out.push(`${it.sub} ${it.label} : ${g.container} ouvert ≥ ${s.per}`);
-  });
-  return out;
+// Un problème par dose au plus : le champ à regarder (f) et ce qui ne va pas
+function problem(id){
+  const it=ALL.find(x=>x.id===id), c=data.counts[id], s=settings[id], g=it.g;
+  if(!filled(id)) return {f:'open', txt:'non compté'};
+  if(c.open==='') return {f:'open', txt:g.openLbl.toLowerCase()+' non saisi'};
+  if(c.closed==='') return {f:'closed', txt:g.closedLbl.toLowerCase()+' non saisi'+(g.chips?'s':'es')};
+  if(g.chips && n(c.open)>=s.per) return {f:'open', txt:`${g.container} ouvert ≥ ${s.per}`};
+  return null;
 }
+function issues(){ return ALL.map(it=>{ const p=problem(it.id); return p && {...p, id:it.id, txt:`${it.sub} ${it.label} : ${p.txt}`}; }).filter(Boolean); }
 
 /* ---------- Chiffres de l'équipe (en ligne) ---------- */
 function teamInfo(){
@@ -409,6 +493,11 @@ function applyTeam(row,quiet){
 }
 function refreshSettingsView(){
   if(tab==='res'){ if($('#modal').hidden) render(); return; }
+  if(tab==='set'){
+    ALL.forEach(it=>{ const a=$('#sf-'+it.id), b=$('#sp-'+it.id);
+      if(a && document.activeElement!==a) a.value=settings[it.id].fixed; if(b && document.activeElement!==b) b.value=settings[it.id].per; });
+    const ti=$('#team-info'); if(ti) ti.textContent=teamInfo(); return;
+  }
   const g=GROUPS.find(x=>x.id===tab);
   g.items.forEach(it=>{ const a=$('#sf-'+it.id), b=$('#sp-'+it.id);
     if(a && document.activeElement!==a) a.value=settings[it.id].fixed; if(b && document.activeElement!==b) b.value=settings[it.id].per; refreshRow(it.id); });
@@ -427,13 +516,20 @@ let pendingTeam=null, teamCode=load(KEYTEAMCODE,''); if(typeof teamCode!=='strin
 function askTeamChange(id,field,value){
   const it=ALL.find(x=>x.id===id), g=it.g, s=settings[id];
   pendingTeam={id, fixed: field==='fixed'?value:s.fixed, per: field==='per'?value:s.per};
-  const what = field==='fixed' ? `nombre camion : <b>${s.fixed} → ${value}</b>` : `${g.unit} par ${g.container} : <b>${s.per} → ${value}</b>`;
+  const what = field==='fixed' ? 'Nombre camion' : `${g.unit[0].toUpperCase()+g.unit.slice(1)} par ${g.container}`;
+  const old = field==='fixed' ? s.fixed : s.per;
+  // Effet sur le total du jour de ce dosage
+  const c=data.counts[id], newTot = n(c.open) + n(c.closed)*pendingTeam.per + n(pendingTeam.fixed);
+  const effect = filled(id)
+    ? `Total du jour pour ${it.sub} ${it.label} : <b>${total(id)} → ${newTot}</b> ${g.unit}.`
+    : `${it.sub} ${it.label} n'est pas encore compté aujourd'hui\u202f; le camion y ajoutera ${n(pendingTeam.fixed)} au lieu de ${n(s.fixed)}.`;
   openModal(`
-    <h3 id="modal-title">Êtes-vous sûr de vouloir changer pour l'ensemble de l'équipe ?</h3>
-    <p>${it.sub} ${it.label}, ${what}</p>
+    <h3 id="modal-title">Changer ce chiffre pour toute l'équipe ?</h3>
+    <div class="change"><span>${it.sub} ${it.label} · ${what}</span><b><s>${old}</s> → ${value}</b></div>
+    <p>${effect}</p>
     <p id="team-msg">Le nouveau chiffre s'appliquera sur tous les téléphones et changera les totaux de tout le monde.</p>
     <label class="codefield" for="team-code">Mot de passe de l'équipe
-      <input id="team-code" type="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done"${teamCode?'':' data-autofocus'} value="${(teamCode||'').replace(/"/g,'&quot;')}">
+      <span class="pwrow"><input id="team-code" type="password" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done"${teamCode?'':' data-autofocus'} value="${(teamCode||'').replace(/"/g,'&quot;')}"><button type="button" class="secondary" id="team-show" aria-pressed="false" aria-controls="team-code">Afficher</button></span>
     </label>
     <div class="btns">
       <button class="primary" id="team-yes">Oui, changer pour toute l'équipe</button>
@@ -469,45 +565,55 @@ function renderGroup(g){
   <section class="panel ${g.id}${locked?' locked':''}">
     ${resumeBanner()}${lockBanner()}
     <div class="ghead"><h2><span class="pill">${g.short}</span>${g.name}</h2><p>${groupHead(g)}</p></div>
-    ${unset===g.items.length ? `<div class="notice"><span>Le nombre « camion » n'est pas réglé (compté 0).</span><button data-open-settings>Régler</button></div>`:''}
+    ${unset===g.items.length ? `<div class="notice"><span>Le nombre « camion » n'est pas réglé (compté 0).</span><button data-open-settings>Réglages camion</button></div>`:''}
     <div class="list">
       <div class="cols ${c3}"><span>Dosage</span><span>${g.openLbl}</span>${g.chips?'':`<span>${g.closedLbl}</span>`}<span>Reste</span></div>
       ${g.items.map(it=>`
       <div class="item" data-id="${it.id}"${it.color?` style="--dc:${it.color}"`:''}>
         <div class="row ${c3}">
-          <div class="dose">${vial(it.color)}<span>${it.label}<small>${it.sub}</small></span></div>
+          <div class="dose">${vial(it.color)}<span>${it.label}<small class="ptag">${g.short}</small></span></div>
           <input class="num" id="o-${it.id}" data-id="${it.id}" data-f="open" ${inputAttrs}${dis} placeholder="" aria-label="${it.sub} ${it.label} — ${g.openLbl}">
           ${g.chips?'':`<input class="num" id="c-${it.id}" data-id="${it.id}" data-f="closed" ${inputAttrs}${dis} placeholder="" aria-label="${it.sub} ${it.label} — ${g.closedLbl}">`}
           <div class="total" id="tot-${it.id}"></div>
         </div>
         ${g.chips?`
-        <div class="chips" role="group" aria-label="${it.label} — ${g.closedLbl}">
+        <div class="chips" role="group" data-stop data-id="${it.id}" tabindex="-1" aria-label="${it.sub} ${it.label} — ${g.closedLbl} : tapez un chiffre de 0 à ${g.chips+1}, ou utilisez les flèches">
           <span class="clab">${g.closedLbl}</span>
           ${Array.from({length:g.chips+1},(_,k)=>`<button class="chip" data-chip="${k}" data-id="${it.id}" aria-pressed="false"${dis}>${k}</button>`).join('')}
           <button class="chip more" data-more data-id="${it.id}" aria-pressed="false"${dis}>${g.chips+1}+</button>
-          <input class="num" id="c-${it.id}" data-id="${it.id}" data-f="closed" ${inputAttrs}${dis} placeholder="" aria-label="${it.label} — ${g.closedLbl}, plus de ${g.chips}" hidden>
+          <label class="morefield" id="mf-${it.id}" hidden><input class="num" id="c-${it.id}" data-id="${it.id}" data-f="closed" ${inputAttrs}${dis} placeholder="" aria-label="${it.sub} ${it.label} — nombre de ${g.container}s fermés (plus de ${g.chips})"><span>${g.container}s</span></label>
         </div>`:''}
         <div class="formula" id="f-${it.id}"></div>
       </div>`).join('')}
     </div>
-    <details class="settings" id="settings">
-      <summary>Réglages : camion et contenance</summary>
-      <div class="setgrid">
-        <span class="h">Dosage</span><span class="h">Camion</span><span class="h">Par ${g.container}</span>
-        ${g.items.map(it=>`
-          <span class="lbl">${it.label}</span>
-          <input class="num" id="sf-${it.id}" data-sid="${it.id}" data-sf="fixed" ${inputAttrs} value="${settings[it.id].fixed??''}" placeholder="0" aria-label="${it.sub} ${it.label} — nombre camion">
-          <input class="num" id="sp-${it.id}" data-sid="${it.id}" data-sf="per" ${inputAttrs} value="${settings[it.id].per}" aria-label="${it.sub} ${it.label} — ${g.unit} par ${g.container}">
-        `).join('')}
-        <div class="foot">
-          <p>Le nombre camion est ajouté au total de chaque dosage. <b>Ces chiffres sont communs à toute l'équipe</b> : si vous en changez un, il change sur tous les téléphones (une confirmation et le mot de passe de l'équipe sont demandés).</p>
-          <p id="team-info">${teamInfo()}</p>
-        </div>
-      </div>
-    </details>
     <div class="next"><button class="primary" data-goto="${nextTab}">${nextLbl} →</button></div>
   </section>`;
   g.items.forEach(it=>{ $('#o-'+it.id).value=data.counts[it.id].open; $('#c-'+it.id).value=data.counts[it.id].closed; syncChips(it.id); refreshRow(it.id); });
+}
+
+/* ---------- Réglages camion (communs à toute l'équipe) : écran à part ---------- */
+let backTab='metha';
+function renderSettings(){
+  main.innerHTML = `
+  <section class="panel settingsview">
+    <div class="ghead"><h2><span class="pill">ÉQUIPE</span>Réglages camion</h2></div>
+    <div class="teamwarn"><b>Ces chiffres valent pour toute l'équipe.</b> Un changement s'applique sur tous les téléphones et change les totaux de tout le monde. Le mot de passe de l'équipe est demandé, avec une confirmation.</div>
+    <p class="sethelp">Le nombre camion est ajouté au total de chaque dosage (stock du camion, pas recompté chaque jour).</p>
+    ${GROUPS.map(g=>`
+    <div class="setcard ${g.id}">
+      <h3>${g.name}</h3>
+      <div class="setgrid">
+        <span class="h">Dosage</span><span class="h">Camion</span><span class="h">${g.unit} par ${g.container}</span>
+        ${g.items.map(it=>`
+          <span class="lbl"${it.color?` style="--dc:${it.color}"`:''}>${vial(it.color)}${it.label}</span>
+          <input class="num" id="sf-${it.id}" data-sid="${it.id}" data-sf="fixed" ${inputAttrs} value="${settings[it.id].fixed??''}" placeholder="0" aria-label="${it.sub} ${it.label} — nombre camion">
+          <input class="num" id="sp-${it.id}" data-sid="${it.id}" data-sf="per" ${inputAttrs} value="${settings[it.id].per}" aria-label="${it.sub} ${it.label} — ${g.unit} par ${g.container}">
+        `).join('')}
+      </div>
+    </div>`).join('')}
+    <p class="sethelp" id="team-info">${teamInfo()}</p>
+    <div class="next"><button class="primary" data-back>← Retour au comptage</button></div>
+  </section>`;
 }
 
 function syncChips(id){
@@ -516,10 +622,12 @@ function syncChips(id){
   const v=data.counts[id].closed, big = v!=='' && n(v)>g.chips;
   item.querySelectorAll('[data-chip]').forEach(b=>b.setAttribute('aria-pressed', v!=='' && n(v)===+b.dataset.chip));
   const more=item.querySelector('[data-more]'), inp=$('#c-'+id);
-  if(big) inp.hidden=false;
-  else if(v!=='' && document.activeElement!==inp) inp.hidden=true;
+  if(big) showMore(id,true);
+  else if(v!=='' && document.activeElement!==inp) showMore(id,false);
   more.setAttribute('aria-pressed', big);
 }
+
+function showMore(id,on){ const w=$('#mf-'+id); if(w) w.hidden=!on; }
 
 function refreshRow(id){
   const it=ALL.find(x=>x.id===id), g=it.g, c=data.counts[id], s=settings[id];
@@ -527,49 +635,101 @@ function refreshRow(id){
   const o=$('#o-'+id);
   if(!filled(id)){ tot.innerHTML='<span class="todo">à compter</span>'; tot.classList.add('empty'); f.textContent=''; o&&o.classList.remove('bad'); return; }
   tot.textContent=total(id); tot.classList.remove('empty');
-  let txt = `${n(c.open)} + ${n(c.closed)} × ${s.per} + ${n(s.fixed)} camion = ${total(id)}`;
+  let txt = `${c.open===''?'?':n(c.open)} + ${c.closed===''?'?':n(c.closed)} × ${s.per} + ${n(s.fixed)} camion = ${total(id)}`;
   let warn='';
   if(g.chips && n(c.open)>=s.per) warn = ` <span class="w">${g.container} ouvert ≥ ${s.per} : à vérifier</span>`;
   else if(c.open!=='' && c.closed==='') warn = ` <span class="w">${g.closedLbl.toLowerCase()} ?</span>`;
   else if(c.open==='' && c.closed!=='') warn = ` <span class="w">${g.openLbl.toLowerCase()} ?</span>`;
   o&&o.classList.toggle('bad', !!g.chips && n(c.open)>=s.per);
   f.innerHTML = txt + warn;
+  // Annonce (polie) d'un nouvel avertissement de la ligne de calcul
+  const wt = warn ? f.querySelector('.w').textContent : '';
+  if(wt && f.dataset.w!==wt) $('#live').textContent = `${it.sub} ${it.label} : ${wt}`;
+  f.dataset.w = wt;
 }
 
 /* ---------- Résultat ---------- */
 function resultText(){
-  let t=`🚌 *Le compte est bus — Bus 31/32*\nComptage du ${todayShort()}\n`;
+  const le=lastEntryTxt();
+  let t=`🚌 *Le compte est bus — Bus 31/32*\n${countTitle()}${le?'\n'+le.charAt(0).toUpperCase()+le.slice(1):''}\n`;
   GROUPS.forEach(g=>{
     t+=`\n*${g.name}* (${g.unit})\n`;
-    g.items.forEach(it=>{ t+=`${it.label} : ${filled(it.id)?total(it.id):'non compté'}\n`; });
+    g.items.forEach(it=>{ const p=problem(it.id);
+      t+=`${it.label} : ${filled(it.id)?total(it.id):'non compté'}${p?' ⚠ à vérifier'+(filled(it.id)?' ('+p.txt+')':''):''}\n`; });
   });
   return t.trim();
 }
 const waIcon='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.2A9.8 9.8 0 0 0 3.6 17l-1.4 4.8 4.9-1.3A9.8 9.8 0 1 0 12 2.2Zm0 17.8a8 8 0 0 1-4.1-1.1l-.3-.2-2.9.8.8-2.8-.2-.3A8 8 0 1 1 12 20Zm4.4-6c-.2-.1-1.4-.7-1.7-.8-.2-.1-.4-.1-.5.1l-.8.9c-.1.2-.3.2-.5.1a6.6 6.6 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.5-.4h-.5a.9.9 0 0 0-.6.3 2.7 2.7 0 0 0-.9 2c0 1.2.9 2.3 1 2.5.1.2 1.7 2.6 4.2 3.7 1.6.7 2.2.7 3 .6.5-.1 1.4-.6 1.7-1.2.2-.6.2-1.1.1-1.2l-.6-.5Z"/></svg>';
 
+function cell(v,suffix){ return v==='' ? '<span class="q">— ?</span>' : n(v)+(suffix||''); }
 function renderResult(){
-  const missing = ALL.filter(it=>!filled(it.id)).length;
+  const missing = ALL.filter(it=>!complete(it.id)).length, le=lastEntryTxt();
   main.innerHTML = `
   <section class="panel">
-    ${resumeBanner()}${lockBanner()}<div class="ghead"><h2><span class="pill">TOTAL</span>Ce qui reste</h2><p>${todayShort()}</p></div>
-    ${missing?`<div class="notice"><span>${missing} dosage${missing>1?'s':''} pas encore compté${missing>1?'s':''}.</span></div>`:''}
-    <a class="wa" id="wa" href="${waHref()}" target="_blank" rel="noopener">${waIcon}${data.sent?'Renvoyer sur WhatsApp':'Envoyer sur WhatsApp'}</a>
+    ${resumeBanner()}${lockBanner()}<div class="ghead"><h2><span class="pill">TOTAL</span>Ce qui reste</h2></div>
+    <p class="runinfo"><b>${countTitle()}</b>${le?`<span>${le}</span>`:''}</p>
+    ${missing?`<div class="notice"><span>${missing} dosage${missing>1?'s':''} pas encore compté${missing>1?'s':''} en entier.</span></div>`:''}
     <div class="tablewrap"><table>
-      <thead><tr><th>Dosage</th><th>À l'unité</th><th>Fermés</th><th>Camion</th><th>Reste</th></tr></thead>
       ${GROUPS.map(g=>`<tbody class="${g.id}">
         <tr class="grp"><td colspan="5">${g.name} · ${g.unit}</td></tr>
+        <tr class="sub"><th scope="col">Dosage</th><th scope="col">${g.openLbl}</th><th scope="col">${g.closedLbl}</th><th scope="col">Camion</th><th scope="col">Reste</th></tr>
         ${g.items.map(it=>{ const c=data.counts[it.id], s=settings[it.id], st=it.color?` style="--dc:${it.color}"`:'';
+          const pb=problem(it.id);
           return filled(it.id)
-          ? `<tr${st}><td>${vial(it.color)}${it.label}</td><td>${n(c.open)}</td><td>${n(c.closed)} × ${s.per}</td><td>${n(s.fixed)}</td><td class="big">${total(it.id)}</td></tr>`
-          : `<tr${st}><td>${vial(it.color)}${it.label}</td><td colspan="4" style="text-align:right"><span class="todo">à compter</span></td></tr>`;
+          ? `<tr${st}${pb?' class="chk"':''}><td>${vial(it.color)}<span class="dl">${it.label}<span class="ptag">${g.short}</span></span></td><td>${cell(c.open)}</td><td>${cell(c.closed,' × '+s.per)}</td><td>${n(s.fixed)}</td><td class="big">${pb?'<span class="flag" title="À vérifier : '+pb.txt+'">⚠</span> ':''}${total(it.id)}</td></tr>`
+          : `<tr${st}><td>${vial(it.color)}<span class="dl">${it.label}<span class="ptag">${g.short}</span></span></td><td colspan="4" style="text-align:right"><span class="todo">à compter</span></td></tr>`;
         }).join('')}
       </tbody>`).join('')}
     </table></div>
+    ${prevBlock()}
+    <a class="wa" id="wa" href="${waHref()}" target="_blank" rel="noopener">${waIcon}${data.sent?'Renvoyer sur WhatsApp':'Envoyer sur WhatsApp'}</a>
     <div class="actions">
       <button class="secondary" id="copy">Copier le texte</button>
+      ${ALL.some(it=>filled(it.id))?'<button class="secondary" data-recount>Recompter tout</button>':''}
     </div>
     <div id="slot"></div>
   </section>`;
+}
+/* Comptages précédents du jour : en lecture seule, pour comparer (pas de fusion des chiffres) */
+function prevBlock(){
+  const list=prevRuns.filter(x=>x.date===data.date && x.run<data.run).sort((a,b)=>b.run-a.run);
+  return list.map((pr,i)=>`<details class="prev"${i?'':' data-last'}>
+    <summary>${i?'':'Comptage précédent\u202f: '}${ordinal(pr.run)} comptage${pr.time?', '+hhmm(new Date(pr.time)):''}${pr.sent?', envoyé':', pas envoyé'}</summary>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Dosage</th><th>${pr.time?hhmm(new Date(pr.time)):ordinal(pr.run)}</th><th>Maintenant</th></tr></thead>
+      ${GROUPS.map(g=>`<tbody class="${g.id}"><tr class="grp"><td colspan="3">${g.name} · ${g.unit}</td></tr>
+        ${g.items.map(it=>{ const a=pr.tot[it.id], b=filled(it.id)?total(it.id):null, st=it.color?` style="--dc:${it.color}"`:'';
+          return `<tr${st}${a!=null&&b!=null&&a!==b?' class="diff"':''}><td>${vial(it.color)}<span class="dl">${it.label}<span class="ptag">${g.short}</span></span></td><td>${a==null?'—':a}${pr.flag&&pr.flag[it.id]?' ⚠':''}</td><td>${b==null?'<span class="todo">à compter</span>':b}</td></tr>`; }).join('')}
+      </tbody>`).join('')}
+    </table></div>
+  </details>`).join('');
+}
+function askRecount(){
+  if(!ALL.some(it=>filled(it.id))){ toast('Rien à recompter\u202f: le comptage est vide'); return; }
+  const t=countTime(data), today=todayShort(), nextRun = data.date===today ? data.run+1 : 1;
+  openModal(`
+    <h3 id="modal-title">Recommencer tout le comptage ?</h3>
+    <p>Un nouveau comptage vide commence${nextRun>1?`\u202f: <b>${ordinal(nextRun)} comptage du ${today}</b>`:''}.</p>
+    <p>Le comptage ${t?'de '+hhmm(new Date(t)):'actuel'} reste visible pour comparer, en lecture seule.</p>
+    <div class="btns">
+      <button class="primary" id="recount-yes">Oui, recompter tout</button>
+      <button class="secondary" data-close data-autofocus>Non, garder ce comptage</button>
+    </div>`);
+}
+function doRecount(){
+  const today=todayShort(), t=countTime(data);
+  const tot={}, flag={}; ALL.forEach(it=>{ tot[it.id]=filled(it.id)?total(it.id):null; if(problem(it.id)) flag[it.id]=1; });
+  prevRuns.push({date:data.date, run:data.run, time:t, sent:data.sent||null, counts:JSON.parse(JSON.stringify(data.counts)), tot, flag});
+  prevRuns=prevRuns.filter(x=>x.date===today || x.date===data.date).slice(-12); save(KEYPREV,prevRuns);
+  const same = data.date===today;
+  ALL.forEach(it=>data.counts[it.id]={open:'',closed:''});
+  data.run = same ? data.run+1 : 1; data.prevTime = same ? t : null; data.date=today;
+  data.sent=null; data.started=Date.now();
+  lastId=null; showResume=false; before=null; history=[]; future=[];
+  lastSnap=snap(); data.saved=null; savedAt=null; updateStatus();
+  tab='metha'; save(KEYTAB,tab);
+  persist(); closeModal(); render(); window.scrollTo({top:0});
+  toast(data.run>1 ? `${ordinal(data.run)} comptage commencé` : 'Nouveau comptage commencé');
 }
 function waHref(){ return 'https://wa.me/?text='+encodeURIComponent(resultText()); }
 
@@ -579,9 +739,9 @@ function resumeBanner(){
   const when = data.saved ? new Date(data.saved) : null;
   const sameDay = data.date===todayShort();
   const whenTxt = when ? (sameDay ? 'à '+when.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : 'le '+data.date) : '';
-  const left = ALL.filter(it=>!filled(it.id)).length;
+  const left = ALL.filter(it=>!complete(it.id)).length;
   return `<div class="resume" role="status">
-    <strong>Comptage repris là où vous l'aviez laissé</strong>
+    <strong>Comptage repris là où vous l'aviez laissé${data.run>1?` (${ordinal(data.run)} comptage du jour)`:''}</strong>
     <span>Dernière saisie ${whenTxt}${lastId?' : '+itemName(lastId):''}. ${left?left+(left>1?' dosages restent':' dosage reste')+' à compter.':'Tout est compté.'}</span>
     ${sameDay?'':'<span><b>Attention, ce comptage date d\'un autre jour.</b></span>'}
     <div><button data-resume-ok>Continuer</button>${sameDay?'':'<button data-resume-new>Nouveau comptage</button>'}</div>
@@ -592,7 +752,7 @@ function markHere(){
   if(lastId){ const el=main.querySelector(`.item[data-id="${lastId}"]`); if(el) el.classList.add('here'); }
 }
 function render(){
-  if(tab==='res') renderResult(); else renderGroup(GROUPS.find(g=>g.id===tab));
+  if(tab==='res') renderResult(); else if(tab==='set') renderSettings(); else renderGroup(GROUPS.find(g=>g.id===tab));
   markHere(); updateChrome();
 }
 
@@ -605,9 +765,9 @@ let modalPushed=false, pendingBack=false, queuedModal=false, exitArmed=false, ex
 function navPush(state){ try{ NAV.pushState(state,''); }catch(e){} }
 window.addEventListener('popstate',e=>{
   const st=e.state||{};
-  if(pendingBack){ pendingBack=false; if(queuedModal){ queuedModal=false; navPush({cb:'modal'}); modalPushed=true; } return; }
+  if(pendingBack){ pendingBack=false; if(queuedModal){ queuedModal=false; navPush({cb:'modal'}); modalPushed=true; } runAfterBack(); return; }
   if(!$('#modal').hidden){ modalPushed=false; closeModal(true); return; }
-  if(st.cb==='app'){ exitArmed=false; if(ORDER.includes(st.tab) && st.tab!==tab) setTab(st.tab,true); return; }
+  if(st.cb==='app'){ exitArmed=false; if((ORDER.includes(st.tab)||st.tab==='set') && st.tab!==tab) setTab(st.tab,true); return; }
   // arrivé au tout début : on prévient avant de quitter
   if(!exitArmed){
     exitArmed=true; toast('Appuyez encore sur Précédent pour quitter l\'appli');
@@ -615,6 +775,11 @@ window.addEventListener('popstate',e=>{
     exitTimer=setTimeout(()=>{ if(exitArmed){ exitArmed=false; navPush({cb:'app',tab}); } },2500);
   }
 });
+
+// Action à faire une fois l'étape « fenêtre » retirée de l'historique (évite de mélanger les étapes)
+let afterBackFn=null, afterBackT=null;
+function runAfterBack(){ const f=afterBackFn; afterBackFn=null; clearTimeout(afterBackT); if(f) f(); }
+function afterBack(fn){ if(!pendingBack){ fn(); return; } afterBackFn=fn; clearTimeout(afterBackT); afterBackT=setTimeout(runAfterBack,400); }
 
 /* ---------- Fenêtres ---------- */
 let lastFocus=null;
@@ -656,7 +821,7 @@ function askReset(){
     </div>`);
 }
 function askNewDay(){
-  const left=ALL.filter(it=>!filled(it.id)).length;
+  const left=ALL.filter(it=>!complete(it.id)).length;
   openModal(`
     <h3 id="modal-title">Nouveau jour</h3>
     <p>Le comptage affiché date du <b>${data.date}</b>${data.sent?' et a été envoyé':''}${left?` (${left} dosage${left>1?'s':''} non compté${left>1?'s':''})`:''}.</p>
@@ -666,9 +831,12 @@ function askNewDay(){
     </div>`);
 }
 function doReset(){
-  const b=snap(); ALL.forEach(it=>data.counts[it.id]={open:'',closed:''}); data.date=todayShort(); data.sent=null;
+  const b=snap(), wasSent=data.sent; ALL.forEach(it=>data.counts[it.id]={open:'',closed:''});
+  if(data.date!==todayShort()){ data.date=todayShort(); data.run=1; data.prevTime=null; }
+  data.sent=null; data.started=Date.now();
   lastId=null; showResume=false; before=null;
-  history.push(b); if(history.length>200) history.shift(); future=[];
+  // « Annuler » après une remise à zéro rend aussi l'état envoyé/verrouillé
+  history.push(wasSent ? JSON.stringify({...JSON.parse(b),s:wasSent}) : b); if(history.length>200) history.shift(); future=[];
   tab='metha'; save(KEYTAB,tab);
   persist(); closeModal(); render(); window.scrollTo({top:0});
   toast('Comptage remis à zéro');
@@ -678,7 +846,12 @@ $('#modal-box').addEventListener('click',e=>{
   if(e.target.closest('#reset-yes') || e.target.closest('#newday-reset')) doReset();
   if(e.target.closest('#do-install')) promptInstall();
   if(e.target.closest('#team-yes')) sendTeamChange();
-  if(e.target.closest('a.wa')){ setTimeout(()=>{ closeModal(); markSent(); },50); }
+  const sh=e.target.closest('#team-show');
+  if(sh){ const i=$('#team-code'), on=i.type==='password'; i.type=on?'text':'password'; sh.textContent=on?'Masquer':'Afficher'; sh.setAttribute('aria-pressed',on); i.focus(); }
+  if(e.target.closest('#sent-yes')){ closeModal(); markSent(); }
+  if(e.target.closest('#recount-yes')) doRecount();
+  const fix=e.target.closest('[data-fix]'); if(fix){ closeModal(); afterBack(()=>goField(fix.dataset.fix,fix.dataset.fixf)); return; }
+  if(e.target.closest('a.wa')){ setTimeout(()=>{ closeModal(); if(!data.sent) afterBack(askSent); },50); }
 });
 $('#modal-box').addEventListener('keydown',e=>{ if(e.key==='Enter' && e.target.id==='team-code'){ e.preventDefault(); sendTeamChange(); } });
 
@@ -723,23 +896,64 @@ async function promptInstall(){
 }
 $('#install').addEventListener('click',showHowto);
 $('#howto-link').addEventListener('click',showHowto);
+$('#settings-link').addEventListener('click',()=>setTab('set'));
 
 /* ---------- Événements de saisie ---------- */
-let before=null, activeInput=null;
-const nextBtn=$('#nextbtn');
-function goNext(from){
-  const ins=[...main.querySelectorAll('input[data-f]')].filter(x=>!x.hidden && !x.disabled);
-  const i=ins.indexOf(from);
-  if(ins[i+1]) ins[i+1].focus(); else { from.blur(); nextBtn.textContent='Suivant ›'; }
+let before=null, activeInput=null, justFocused=null, keepCaret=null;
+const nextBtn=$('#nextbtn'), nextWrap=$('#nextwrap'), VV=window.visualViewport, root=document.documentElement;
+/* Étapes de « Suivant » : chaque champ, et pour la méthadone la rangée des cartons fermés
+   (sauf quand « 7+ » est choisi : on passe alors par le champ du nombre de cartons) */
+function stopOf(el){ return el && el.closest ? (el.matches('input[data-f]') ? el : el.closest('.chips[data-stop]')) : null; }
+function stops(){
+  return [...main.querySelectorAll('input[data-f], .chips[data-stop]')].filter(x=>{
+    if(x.disabled || x.closest('[hidden]') || x.closest('.locked')) return false;
+    if(x.matches('.chips')){ const w=$('#mf-'+x.dataset.id); return !w || w.hidden; }
+    return true;
+  });
 }
+function goNext(from){
+  const cur=stopOf(from)||from, all=stops();
+  const nx=all.find(x=>x!==cur && !!(cur.compareDocumentPosition(x) & Node.DOCUMENT_POSITION_FOLLOWING));
+  if(nx) nx.focus(); else { cur.blur(); nextBtn.textContent='Suivant ›'; }
+}
+function selectAll(el){ try{ el.setSelectionRange(0,el.value.length); }catch(e){ try{ el.select(); }catch(e2){} } }
+// La barre « Suivant » suit le bas de la zone visible (au-dessus du clavier quand il est ouvert)
+function placeBar(){
+  if(nextWrap.hidden) return;
+  const off = VV ? Math.max(0, window.innerHeight - VV.height - VV.offsetTop) : 0;
+  nextWrap.style.bottom = Math.round(off)+'px';
+}
+function keepVisible(){
+  const el=activeInput; if(!el || !el.isConnected) return;
+  const r=el.getBoundingClientRect(), top=VV?VV.offsetTop:0, bottom=top+(VV?VV.height:window.innerHeight);
+  const hb=$('header').getBoundingClientRect().bottom;
+  const minTop=Math.max(top,hb)+8, maxBottom=bottom-(nextWrap.hidden?0:nextWrap.offsetHeight)-8;
+  if(r.bottom>maxBottom && r.top-(r.bottom-maxBottom)>=minTop) window.scrollBy(0, r.bottom-maxBottom);
+  else if(r.top<minTop) window.scrollBy(0, r.top-minTop);
+}
+function startTyping(){
+  if(nextWrap.hidden){ nextWrap.hidden=false; root.classList.add('typing'); }
+  placeBar(); setTimeout(keepVisible,60); setTimeout(()=>{ placeBar(); keepVisible(); },350);
+}
+function endTyping(){ nextWrap.hidden=true; root.classList.remove('typing'); }
+if(VV){ VV.addEventListener('resize',()=>{ placeBar(); keepVisible(); }); VV.addEventListener('scroll',placeBar); }
 nextBtn.addEventListener('mousedown',e=>e.preventDefault());
 nextBtn.addEventListener('click',()=>{ if(activeInput) goNext(activeInput); });
 main.addEventListener('focusin',e=>{
-  if(e.target.dataset.f){ before=snap(); activeInput=e.target; nextBtn.hidden=false;
-    const ins=[...main.querySelectorAll('input[data-f]')].filter(x=>!x.hidden && !x.disabled); nextBtn.textContent = ins.indexOf(e.target)===ins.length-1 ? 'Terminé ✓' : 'Suivant ›';
-    setTimeout(()=>e.target.select&&e.target.select(),0); }
-  if(e.target.dataset.sf) setTimeout(()=>e.target.select&&e.target.select(),0);
+  const t=e.target, st=stopOf(t);
+  if(st){
+    if(t.dataset.f) before=snap();
+    activeInput=st; startTyping();
+    const all=stops(); nextBtn.textContent = all.indexOf(st)===all.length-1 ? 'Terminé ✓' : 'Suivant ›';
+  }
+  // Taper dans un champ déjà rempli remplace la valeur
+  if(t.dataset.f || t.dataset.sf){
+    if(keepCaret===t){ keepCaret=null; setTimeout(()=>{ try{ t.setSelectionRange(t.value.length,t.value.length); }catch(e){} },0); }
+    else { justFocused=t; setTimeout(()=>selectAll(t),0); }
+  }
 });
+// Le relâchement du clic ne doit pas annuler la sélection faite au focus
+main.addEventListener('mouseup',e=>{ if(justFocused && e.target===justFocused){ e.preventDefault(); selectAll(e.target); } justFocused=null; });
 main.addEventListener('input',e=>{
   const el=e.target;
   if(el.dataset.f){
@@ -754,7 +968,7 @@ main.addEventListener('input',e=>{
   }
 });
 main.addEventListener('focusout',e=>{
-  if(e.target.dataset.f){ activeInput=null; setTimeout(()=>{ if(!activeInput) nextBtn.hidden=true; },120); }
+  if(stopOf(e.target)){ activeInput=null; setTimeout(()=>{ if(!activeInput) endTyping(); },120); }
   if(e.target.dataset.f && before!==null){ pushHistory(before); before=null; }
   if(e.target.dataset.f==='closed') syncChips(e.target.dataset.id);
   if(e.target.dataset.sf){
@@ -763,7 +977,31 @@ main.addEventListener('focusout',e=>{
     if(v!==cur) setTimeout(()=>{ if($('#modal').hidden) askTeamChange(id,f,v); else el.value=cur; },0);
   }
 });
+/* Cartons fermés au clavier : chiffre (0 à 6, 7 ou plus ouvre le champ), flèches, Entrée = Suivant */
+function setClosed(id,v){
+  const b=snap(); data.counts[id].closed=v; lastId=id; markHere();
+  const inp=$('#c-'+id); inp.value=v; showMore(id, n(v)>ALL.find(x=>x.id===id).g.chips);
+  persist(); pushHistory(b); syncChips(id); refreshRow(id);
+}
+function openMore(id,digit){
+  const inp=$('#c-'+id), more=main.querySelector(`[data-more][data-id="${id}"]`);
+  showMore(id,true); if(more) more.setAttribute('aria-pressed','true');
+  if(digit){ inp.value=digit; const b=snap(); data.counts[id].closed=digit; lastId=id; markHere(); persist(); pushHistory(b); refreshRow(id); keepCaret=inp; }
+  inp.focus();
+}
 main.addEventListener('keydown',e=>{
+  const grp=e.target.closest && e.target.closest('.chips[data-stop]');
+  if(grp && !e.target.matches('input') && !e.ctrlKey && !e.metaKey && !e.altKey){
+    const id=grp.dataset.id, g=ALL.find(x=>x.id===id).g, v=data.counts[id].closed;
+    if(/^[0-9]$/.test(e.key)){ e.preventDefault(); if(+e.key<=g.chips) setClosed(id,e.key); else openMore(id,e.key); return; }
+    if(e.key==='+'){ e.preventDefault(); openMore(id,''); return; }
+    const d={ArrowRight:1,ArrowUp:1,ArrowLeft:-1,ArrowDown:-1}[e.key];
+    if(d){ e.preventDefault();
+      const k = v==='' ? (d>0?0:g.chips) : Math.max(0,n(v)+d);
+      if(k>g.chips) openMore(id,String(g.chips+1)); else if(String(k)!==v) setClosed(id,String(k));
+      return; }
+    if(e.key==='Enter' && e.target===grp){ e.preventDefault(); goNext(grp); return; }
+  }
   if(e.key==='Enter' && e.target.matches('input.num')){
     e.preventDefault();
     if(e.target.dataset.f){ goNext(e.target); return; }
@@ -774,10 +1012,8 @@ main.addEventListener('keydown',e=>{
 main.addEventListener('click',e=>{
   const chip=e.target.closest('[data-chip]');
   if(chip){
-    const id=chip.dataset.id, b=snap();
-    data.counts[id].closed=chip.dataset.chip; lastId=id; markHere();
-    const inp=$('#c-'+id); inp.value=chip.dataset.chip; inp.hidden=true;
-    persist(); pushHistory(b); syncChips(id); refreshRow(id);
+    const id=chip.dataset.id;
+    setClosed(id,chip.dataset.chip);
     const items=[...main.querySelectorAll('.item')]; const nx=items[items.findIndex(x=>x.dataset.id===id)+1];
     if(nx){ const o=nx.querySelector('input[data-f="open"]'); if(o && o.value==='') o.focus({preventScroll:false}); }
     return;
@@ -785,48 +1021,74 @@ main.addEventListener('click',e=>{
   if(e.target.closest('[data-resume-ok]')){ showResume=false; render(); return; }
   if(e.target.closest('[data-resume-new]')){ askNewDay(); return; }
   if(e.target.closest('[data-unlock]')){ data.sent=null; persist(); render(); toast('Saisies déverrouillées'); return; }
+  if(e.target.closest('[data-recount]')){ askRecount(); return; }
   const wa=e.target.closest('a.wa');
   if(wa){
+    wa.href=waHref();
     const iss=issues();
     if(iss.length){ e.preventDefault();
       openModal(`<h3 id="modal-title">Vérifier avant d'envoyer</h3>
-        <p>${iss.length} point${iss.length>1?'s':''} à regarder :</p>
-        <ul class="issues">${iss.map(x=>`<li>${x}</li>`).join('')}</ul>
+        <p>${iss.length} point${iss.length>1?'s':''} à regarder (touchez pour y aller) :</p>
+        <ul class="issues">${iss.map(x=>`<li><button data-fix="${x.id}" data-fixf="${x.f}">${x.txt}</button></li>`).join('')}</ul>
         <div class="btns">
-          <button class="primary" data-close data-autofocus>Compléter d'abord</button>
-          <a class="wa" href="${waHref()}" target="_blank" rel="noopener">${waIcon}Envoyer quand même</a>
+          <button class="primary" data-fix="${iss[0].id}" data-fixf="${iss[0].f}" data-autofocus>Compléter d'abord</button>
+          <a class="wa ghost" href="${waHref()}" target="_blank" rel="noopener">${waIcon}Envoyer quand même</a>
+          <p class="small">Les lignes à vérifier partent marquées «\u202f⚠ à vérifier\u202f».</p>
         </div>`);
       return;
     }
-    setTimeout(markSent,50); return;
+    if(!data.sent) setTimeout(askSent,50);
+    return;
   }
   const more=e.target.closest('[data-more]');
-  if(more){ const inp=$('#c-'+more.dataset.id); inp.hidden=false; more.setAttribute('aria-pressed','true'); inp.focus(); return; }
+  if(more){ openMore(more.dataset.id,''); return; }
   const go=e.target.closest('[data-goto]'); if(go){ setTab(go.dataset.goto); return; }
-  if(e.target.closest('[data-open-settings]')){ const d=$('#settings'); d.open=true; d.scrollIntoView({behavior:'smooth',block:'start'}); return; }
+  if(e.target.closest('[data-open-settings]')){ setTab('set'); return; }
+  if(e.target.closest('[data-back]')){ setTab(backTab); return; }
   if(e.target.id==='copy'){ copyResult(); return; }
 });
 
+// Mène au champ d'une dose (change d'onglet si besoin)
+function goField(id,f){
+  const it=ALL.find(x=>x.id===id); if(!it) return;
+  if(tab!==it.g.id) setTab(it.g.id);
+  let el = f==='closed' ? (it.g.chips && $('#mf-'+id) && $('#mf-'+id).hidden ? main.querySelector(`.chips[data-id="${id}"]`) : $('#c-'+id)) : $('#o-'+id);
+  if(el && el.disabled) el=main.querySelector(`.item[data-id="${id}"]`);
+  if(el){ el.scrollIntoView({block:'center'}); el.focus({preventScroll:true}); }
+}
+let copiedUnsent=false;
 function copyResult(){
   const txt=resultText().replace(/\*/g,'');
   const fallback=()=>{ $('#slot').innerHTML=`<textarea class="copyfb" readonly></textarea>`; const ta=$('#slot textarea'); ta.value=txt; ta.focus(); ta.select(); toast('Texte sélectionné : copiez-le'); };
+  if(!data.sent) copiedUnsent=true; // au retour dans l'appli, on demandera si le message est parti
   try{ navigator.clipboard.writeText(txt).then(()=>toast('Résultat copié'),fallback); }catch(err){ fallback(); }
 }
 
-function setTab(t,fromBack){ if(!fromBack && t!==tab){ exitArmed=false; navPush({cb:'app',tab:t}); } tab=t; save(KEYTAB,t); persist(); render(); window.scrollTo({top:0}); }
+function setTab(t,fromBack){
+  if(t==='set' && tab!=='set') backTab=tab;
+  if(!fromBack && t!==tab){ exitArmed=false; navPush({cb:'app',tab:t}); }
+  tab=t; if(t!=='set') save(KEYTAB,t); persist(); render(); window.scrollTo({top:0});
+}
 document.querySelector('.tabs').addEventListener('click',e=>{ const b=e.target.closest('[data-tab]'); if(b) setTab(b.dataset.tab); });
+// Onglets au clavier : flèches gauche/droite, Début, Fin
+document.querySelector('.tabs').addEventListener('keydown',e=>{
+  const i=ORDER.indexOf(e.target.dataset.tab); if(i<0) return;
+  const j={ArrowRight:(i+1)%ORDER.length, ArrowLeft:(i+ORDER.length-1)%ORDER.length, Home:0, End:ORDER.length-1}[e.key];
+  if(j===undefined) return; e.preventDefault(); setTab(ORDER[j]); $('#tab-'+ORDER[j]).focus();
+});
 
 function restore(json){
   let o; try{ o=JSON.parse(json); }catch(e){ return; }
-  if(isObj(o) && isObj(o.c)){ data.counts=o.c; if(typeof o.d==='string') data.date=o.d; }
+  if(isObj(o) && isObj(o.c)){ data.counts=o.c; if(typeof o.d==='string') data.date=o.d; if(n(o.r)>0) data.run=n(o.r); if('p' in o) data.prevTime=typeof o.p==='number'?o.p:null; if(o.s) data.sent=o.s; }
   else if(isObj(o)) data.counts=o; // ancien format
   ALL.forEach(it=>{ if(!isObj(data.counts[it.id])) data.counts[it.id]={open:'',closed:''}; });
   if(data.date!==todayShort()) showResume=true;
   persist(); render();
 }
 function blurCount(){ const a=document.activeElement; if(a && a.dataset && a.dataset.f) a.blur(); }
-function undo(){ blurCount(); if(!history.length) return; future.push(snap()); restore(history.pop()); toast('Saisie annulée'); }
-function redo(){ blurCount(); if(!future.length) return; history.push(snap()); restore(future.pop()); toast('Saisie rétablie'); }
+function lockedMsg(){ toast('Comptage envoyé\u202f: touchez «\u202fModifier\u202f» pour corriger une case'); }
+function undo(){ blurCount(); if(data.sent){ lockedMsg(); return; } if(!history.length) return; future.push(snap()); restore(history.pop()); toast('Saisie annulée'); }
+function redo(){ blurCount(); if(data.sent){ lockedMsg(); return; } if(!future.length) return; history.push(snap()); restore(future.pop()); toast('Saisie rétablie'); }
 $('#undo').addEventListener('click',undo);
 $('#redo').addEventListener('click',redo);
 document.addEventListener('keydown',e=>{
@@ -843,7 +1105,10 @@ function checkDay(){
   if($('#date').textContent!==d){ $('#date').textContent=d; if(resumedNow() && data.date!==todayShort() && $('#modal').hidden){ showResume=true; render(); askNewDay(); } }
 }
 function resumedNow(){ return ALL.some(it=>{ const c=data.counts[it.id]; return c.open!==''||c.closed!==''; }); }
-document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') persist(); else { checkDay(); syncTeam(); } });
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='hidden'){ persist(); if(copiedUnsent) askedSent=true; }
+  else { checkDay(); syncTeam(); if(askedSent && copiedUnsent && !data.sent && $('#modal').hidden){ copiedUnsent=false; askSent(); } }
+});
 setInterval(syncTeam,300000);
 window.addEventListener('online',syncTeam);
 setInterval(checkDay,60000);
@@ -856,13 +1121,15 @@ if('serviceWorker' in navigator && location.protocol==='https:'){
 }
 
 if(data.tab && ORDER.includes(data.tab)) tab=data.tab;
+// Après un rechargement, on repart du haut : la bannière « Comptage repris » doit rester en vue
+try{ if('scrollRestoration' in NAV) NAV.scrollRestoration='manual'; }catch(e){}
 try{ NAV.replaceState({cb:'base'},''); }catch(e){}
 navPush({cb:'app',tab});
 render();
 persist();
 syncTeam();
 if(showResume && data.date!==todayShort()) askNewDay();
-else if(showResume && lastId){ const el=main.querySelector(`.item[data-id="${lastId}"]`); if(el) setTimeout(()=>el.scrollIntoView({block:'center'}),50); }
+// (la bannière « Comptage repris » reste en vue : on ne fait pas défiler vers la dernière saisie)
 })();
 </script>
 </body>
