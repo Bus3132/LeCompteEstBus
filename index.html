@@ -40,6 +40,7 @@
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 img{max-width:100%}
 html{-webkit-text-size-adjust:100%;scroll-padding-top:200px;scroll-padding-bottom:24px}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.4;
@@ -59,7 +60,7 @@ button:focus-visible,input:focus-visible,a:focus-visible,summary:focus-visible{o
 .brand .txt{flex:1;min-width:0}
 .wordmark{margin:0;white-space:nowrap;font-family:var(--f-brand);font-weight:400;font-size:clamp(20px,6.2vw,28px);line-height:.95;color:var(--navy);letter-spacing:.01em;transform:rotate(-2deg);transform-origin:left center}
 .wordmark .est{color:var(--grey);font-size:.82em}
-.wordmark .bus{color:var(--orange);font-size:1.12em}
+.wordmark .bus{color:var(--orange);font-size:1.12em;-webkit-text-stroke:1.5px var(--navy);paint-order:stroke fill}
 .brand .row2{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px}
 .tagline{margin:0;font-size:13px;color:var(--muted);display:flex;flex-wrap:wrap;gap:2px 8px;align-items:center}
 .tagline b{color:var(--navy)}
@@ -81,7 +82,10 @@ header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var
 .nextbar{width:100%;min-height:46px;border:0;border-radius:12px;background:var(--navy);color:#fff;font-weight:700;font-size:17px}
 .notice.lock{background:#e8f0fb;color:var(--navy)}
 .notice.lock button,.notice button.strong{border:1.5px solid currentColor;text-decoration:none;border-radius:9px;padding:6px 10px}
-.panel.locked input.num,.panel.locked .chip{opacity:.55}
+/* Verrouillé : chiffres en plein contraste, cadenas dans le champ */
+.panel.locked input.num:disabled{opacity:1;color:var(--ink);-webkit-text-fill-color:var(--ink);background:#eef1f6 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235d6779' stroke-width='2.2' stroke-linecap='round'%3E%3Crect x='5' y='11' width='14' height='10' rx='2'/%3E%3Cpath d='M8 11V8a4 4 0 0 1 8 0v3'/%3E%3C/svg%3E") no-repeat right 6px top 6px/13px;border-style:dashed}
+.panel.locked .chip:disabled{opacity:1;color:var(--ink);border-style:dashed}
+.panel.locked .chip[aria-pressed="true"]{border-style:solid}
 .notice.lock .lockbtns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .notice.lock .lockbtns button{min-height:44px}
 .issues{margin:0;padding:6px;background:var(--warn-bg);color:var(--warn);border-radius:10px;font-size:15px;display:grid;gap:2px;list-style:none}
@@ -103,6 +107,7 @@ header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var
 .tabs{display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:3px;gap:3px}
 .tabs button{border:0;background:transparent;border-radius:9px;min-height:44px;padding:9px 2px;font-size:14px;font-weight:700;display:flex;justify-content:center;align-items:center;gap:5px;min-width:0}
 .tabs button[aria-selected="true"]{background:var(--g,var(--navy));color:var(--on-g,#fff)}
+.tabs button[aria-selected="false"][data-tab]:not([data-tab="res"]){box-shadow:inset 0 -3px 0 color-mix(in srgb,var(--g) 70%,transparent)}
 .tabs [data-tab="metha"]{--g:var(--metha);--on-g:var(--on-metha)} .tabs [data-tab="bupre"]{--g:var(--bupre);--on-g:var(--on-bupre)} .tabs [data-tab="oro"]{--g:var(--oro);--on-g:var(--on-oro)}
 .tabs button[aria-selected="true"] .badge{background:color-mix(in srgb,#fff 28%,transparent);color:inherit}
 .badge{font-family:var(--f-num);font-size:11px;min-width:18px;padding:1px 5px;border-radius:99px;background:var(--warn-bg);color:var(--warn)}
@@ -127,7 +132,7 @@ main{padding-top:10px}
 .resume{background:var(--surface);border:1.5px solid var(--blue);border-radius:12px;padding:10px 12px;font-size:14px;display:grid;gap:8px}
 .resume strong{font-size:15px;color:var(--navy)}
 .resume div{display:flex;gap:8px;flex-wrap:wrap}
-.resume button{border:1px solid var(--line);background:var(--field);border-radius:10px;padding:8px 12px;font-weight:700;font-size:14px}
+.resume button{border:1px solid var(--line);background:var(--field);border-radius:10px;min-height:44px;padding:8px 14px;font-weight:700;font-size:15px}
 
 .list{background:var(--surface);border:1px solid var(--line);border-top:5px solid var(--g,var(--line));border-radius:14px;overflow:hidden}
 .cols,.row{display:grid;grid-template-columns:minmax(72px,1.1fr) 1fr 1fr minmax(64px,.9fr);gap:8px;align-items:center;padding:0 12px}
@@ -139,6 +144,11 @@ main{padding-top:10px}
 .item.here{box-shadow:inset 0 0 0 2px rgba(13,42,94,.28)}
 .dose{font-weight:700;font-size:17px;line-height:1.1;border-left:6px solid var(--dc,var(--g));padding-left:8px;display:flex;align-items:center;gap:7px;color:var(--navy)}
 .dose small{display:block;font-weight:400;font-size:12px;color:var(--muted)}
+/* Produit écrit sur chaque ligne (Bupré et Oro se ressemblent) */
+.ptag{display:inline-block;width:max-content;margin-top:3px;font-family:var(--f-body);font-size:11px;font-weight:700;letter-spacing:.05em;line-height:1.3;padding:1px 6px;border-radius:5px;background:var(--g);color:var(--on-g);vertical-align:2px}
+.dose small.ptag{display:block;color:var(--on-g);font-weight:700;font-size:11px}
+td .dl{display:inline-block;vertical-align:middle}
+td .ptag{display:block;margin:1px 0 0;font-size:10.5px;padding:0 5px}
 .vial{width:15px;height:24px;flex:0 0 auto;color:var(--muted)}
 input.num{width:100%;min-width:0;height:48px;border:1.5px solid var(--line);background:#fff;color:var(--ink);border-radius:10px;
   font-family:var(--f-num);font-size:22px;font-weight:600;text-align:center;font-variant-numeric:tabular-nums;padding:0 4px}
@@ -193,9 +203,11 @@ a.wa svg{width:24px;height:24px}
 table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
 th,td{padding:9px 8px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
 th:first-child,td:first-child{text-align:left}
-thead th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}
+thead th,tr.sub th{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:700;white-space:normal;vertical-align:bottom;line-height:1.2}
+tr.sub th{background:#fff;padding-top:4px}
 td{font-family:var(--f-num);font-size:15px}
-@media (max-width:420px){ th,td{padding:8px 5px} td{font-size:14px} td.big{font-size:17px} thead th{font-size:10px;letter-spacing:.03em} }
+@media (max-width:420px){ th,td{padding:8px 4px} td{font-size:14px} td.big{font-size:17px} tr.sub th{font-size:12px;letter-spacing:0;text-transform:none} td .flag{font-size:13px} }
+@media (max-width:370px){ th,td{padding:8px 3px} th:first-child,td:first-child{padding-left:6px} }
 td:first-child{font-family:var(--f-body);font-weight:700;color:var(--navy)}
 td .vial{vertical-align:middle;margin-right:6px;width:12px;height:19px}
 td.big{font-size:19px;font-weight:700;color:var(--navy)}
@@ -277,16 +289,17 @@ footer button{border:0;background:transparent;color:var(--blue);text-decoration:
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg><span>Remise à zéro</span>
       </button>
     </div>
-    <div class="tabs" role="tablist">
-      <button role="tab" data-tab="metha">Métha <span class="badge" id="b-metha"></span></button>
-      <button role="tab" data-tab="bupre">Bupré <span class="badge" id="b-bupre"></span></button>
-      <button role="tab" data-tab="oro">Oro <span class="badge" id="b-oro"></span></button>
-      <button role="tab" data-tab="res">Résultat</button>
+    <div class="tabs" role="tablist" aria-label="Étapes du comptage">
+      <button role="tab" id="tab-metha" aria-controls="main" data-tab="metha">Métha <span class="badge" id="b-metha"></span></button>
+      <button role="tab" id="tab-bupre" aria-controls="main" data-tab="bupre">Bupré <span class="badge" id="b-bupre"></span></button>
+      <button role="tab" id="tab-oro" aria-controls="main" data-tab="oro">Oro <span class="badge" id="b-oro"></span></button>
+      <button role="tab" id="tab-res" aria-controls="main" data-tab="res">Résultat</button>
     </div>
   </header>
   <div class="status" id="status" aria-live="polite"><span class="dot"></span><span id="status-txt">Prêt</span></div>
 
   <main id="main"></main>
+  <div class="sr" id="live" aria-live="polite"></div>
 
   <footer>
     <div class="brush" aria-hidden="true"></div>
@@ -319,13 +332,13 @@ const DEFAULT_CAMION = {
 
 // Couleurs des étiquettes des flacons de sirop Méthadone AP-HP
 const METHA_COLORS={5:'#f3a6c4',10:'#f8b234',20:'#aab0b7',40:'#8fc740',60:'#3db5e6'};
-function vial(c){ return c ? `<svg class="vial" viewBox="0 0 15 24" aria-hidden="true"><rect x="3.5" y="0.5" width="8" height="5" rx="1.2" fill="${c}"/><rect x="1" y="5.5" width="13" height="18" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="2.6" y="12" width="9.8" height="10" rx="1.4" fill="${c}"/></svg>` : ''; }
+function vial(c){ return c ? `<svg class="vial" viewBox="0 0 15 24" aria-hidden="true"><rect x="3.5" y="0.5" width="8" height="5" rx="1.2" fill="${c}" stroke="#14203a" stroke-opacity=".6" stroke-width=".9"/><rect x="1" y="5.5" width="13" height="18" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="2.6" y="12" width="9.8" height="10" rx="1.4" fill="${c}" stroke="#14203a" stroke-opacity=".6" stroke-width=".9"/></svg>` : ''; }
 const GROUPS = [
   { id:'metha', short:'MÉTHA', name:'Méthadone', unit:'flacons', container:'carton', openLbl:'Carton ouvert', closedLbl:'Cartons fermés', per:70, chips:6,
     items:[5,10,20,40,60].map(d=>({id:'m'+d, label:d+' mg', sub:'Méthadone', color:METHA_COLORS[d]})) },
-  { id:'bupre', short:'BUPRÉ', name:'Buprénorphine', unit:'cp', container:'boîte', openLbl:'Nombre de comprimés', closedLbl:'Boîtes fermées', per:7,
+  { id:'bupre', short:'BUPRÉ', name:'Buprénorphine', unit:'cp', container:'boîte', openLbl:'Comprimés hors boîte', closedLbl:'Boîtes fermées', per:7,
     items:[0.4,1,2,4,6,8].map(d=>({id:'b'+String(d).replace('.','_'), label:String(d).replace('.',',')+' mg', sub:'Bupré'})) },
-  { id:'oro', short:'ORO', name:'Orobupré', unit:'cp', container:'boîte', openLbl:'Nombre de comprimés', closedLbl:'Boîtes fermées', per:7,
+  { id:'oro', short:'ORO', name:'Orobupré', unit:'cp', container:'boîte', openLbl:'Comprimés hors boîte', closedLbl:'Boîtes fermées', per:7,
     items:[2,8].map(d=>({id:'o'+d, label:d+' mg', sub:'Orobupré'})) }
 ];
 const ORDER=['metha','bupre','oro','res'];
@@ -409,7 +422,9 @@ function updateChrome(){
     const b=$('#b-'+g.id); b.textContent = left ? left : '✓'; b.classList.toggle('done', !left);
     b.title = left ? left+(left>1?' dosages':' dosage')+' à compter' : 'Tout est compté';
   });
-  document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected', b.dataset.tab===tab));
+  document.querySelectorAll('.tabs button').forEach(b=>{ const on=b.dataset.tab===tab; b.setAttribute('aria-selected', on); b.tabIndex = on || (tab==='set' && b.dataset.tab===backTab) ? 0 : -1; });
+  if(tab==='set'){ main.removeAttribute('role'); main.removeAttribute('aria-labelledby'); }
+  else { main.setAttribute('role','tabpanel'); main.setAttribute('aria-labelledby','tab-'+tab); }
 }
 
 const inputAttrs='inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" autocomplete="off"';
@@ -555,7 +570,7 @@ function renderGroup(g){
       ${g.items.map(it=>`
       <div class="item" data-id="${it.id}"${it.color?` style="--dc:${it.color}"`:''}>
         <div class="row ${c3}">
-          <div class="dose">${vial(it.color)}<span>${it.label}<small>${it.sub}</small></span></div>
+          <div class="dose">${vial(it.color)}<span>${it.label}<small class="ptag">${g.short}</small></span></div>
           <input class="num" id="o-${it.id}" data-id="${it.id}" data-f="open" ${inputAttrs}${dis} placeholder="" aria-label="${it.sub} ${it.label} — ${g.openLbl}">
           ${g.chips?'':`<input class="num" id="c-${it.id}" data-id="${it.id}" data-f="closed" ${inputAttrs}${dis} placeholder="" aria-label="${it.sub} ${it.label} — ${g.closedLbl}">`}
           <div class="total" id="tot-${it.id}"></div>
@@ -626,6 +641,10 @@ function refreshRow(id){
   else if(c.open==='' && c.closed!=='') warn = ` <span class="w">${g.openLbl.toLowerCase()} ?</span>`;
   o&&o.classList.toggle('bad', !!g.chips && n(c.open)>=s.per);
   f.innerHTML = txt + warn;
+  // Annonce (polie) d'un nouvel avertissement de la ligne de calcul
+  const wt = warn ? f.querySelector('.w').textContent : '';
+  if(wt && f.dataset.w!==wt) $('#live').textContent = `${it.sub} ${it.label} : ${wt}`;
+  f.dataset.w = wt;
 }
 
 /* ---------- Résultat ---------- */
@@ -650,14 +669,14 @@ function renderResult(){
     <p class="runinfo"><b>${countTitle()}</b>${le?`<span>${le}</span>`:''}</p>
     ${missing?`<div class="notice"><span>${missing} dosage${missing>1?'s':''} pas encore compté${missing>1?'s':''} en entier.</span></div>`:''}
     <div class="tablewrap"><table>
-      <thead><tr><th>Dosage</th><th>À l'unité</th><th>Fermés</th><th>Camion</th><th>Reste</th></tr></thead>
       ${GROUPS.map(g=>`<tbody class="${g.id}">
         <tr class="grp"><td colspan="5">${g.name} · ${g.unit}</td></tr>
+        <tr class="sub"><th scope="col">Dosage</th><th scope="col">${g.openLbl}</th><th scope="col">${g.closedLbl}</th><th scope="col">Camion</th><th scope="col">Reste</th></tr>
         ${g.items.map(it=>{ const c=data.counts[it.id], s=settings[it.id], st=it.color?` style="--dc:${it.color}"`:'';
           const pb=problem(it.id);
           return filled(it.id)
-          ? `<tr${st}${pb?' class="chk"':''}><td>${vial(it.color)}${it.label}</td><td>${cell(c.open)}</td><td>${cell(c.closed,' × '+s.per)}</td><td>${n(s.fixed)}</td><td class="big">${pb?'<span class="flag" title="À vérifier : '+pb.txt+'">⚠</span> ':''}${total(it.id)}</td></tr>`
-          : `<tr${st}><td>${vial(it.color)}${it.label}</td><td colspan="4" style="text-align:right"><span class="todo">à compter</span></td></tr>`;
+          ? `<tr${st}${pb?' class="chk"':''}><td>${vial(it.color)}<span class="dl">${it.label}<span class="ptag">${g.short}</span></span></td><td>${cell(c.open)}</td><td>${cell(c.closed,' × '+s.per)}</td><td>${n(s.fixed)}</td><td class="big">${pb?'<span class="flag" title="À vérifier : '+pb.txt+'">⚠</span> ':''}${total(it.id)}</td></tr>`
+          : `<tr${st}><td>${vial(it.color)}<span class="dl">${it.label}<span class="ptag">${g.short}</span></span></td><td colspan="4" style="text-align:right"><span class="todo">à compter</span></td></tr>`;
         }).join('')}
       </tbody>`).join('')}
     </table></div>
@@ -679,7 +698,7 @@ function prevBlock(){
       <thead><tr><th>Dosage</th><th>${pr.time?hhmm(new Date(pr.time)):ordinal(pr.run)}</th><th>Maintenant</th></tr></thead>
       ${GROUPS.map(g=>`<tbody class="${g.id}"><tr class="grp"><td colspan="3">${g.name} · ${g.unit}</td></tr>
         ${g.items.map(it=>{ const a=pr.tot[it.id], b=filled(it.id)?total(it.id):null, st=it.color?` style="--dc:${it.color}"`:'';
-          return `<tr${st}${a!=null&&b!=null&&a!==b?' class="diff"':''}><td>${vial(it.color)}${it.label} <span class="ptag">${g.short}</span></td><td>${a==null?'—':a}${pr.flag&&pr.flag[it.id]?' ⚠':''}</td><td>${b==null?'à compter':b}</td></tr>`; }).join('')}
+          return `<tr${st}${a!=null&&b!=null&&a!==b?' class="diff"':''}><td>${vial(it.color)}<span class="dl">${it.label}<span class="ptag">${g.short}</span></span></td><td>${a==null?'—':a}${pr.flag&&pr.flag[it.id]?' ⚠':''}</td><td>${b==null?'à compter':b}</td></tr>`; }).join('')}
       </tbody>`).join('')}
     </table></div>
   </details>`).join('');
@@ -1050,6 +1069,12 @@ function setTab(t,fromBack){
   tab=t; if(t!=='set') save(KEYTAB,t); persist(); render(); window.scrollTo({top:0});
 }
 document.querySelector('.tabs').addEventListener('click',e=>{ const b=e.target.closest('[data-tab]'); if(b) setTab(b.dataset.tab); });
+// Onglets au clavier : flèches gauche/droite, Début, Fin
+document.querySelector('.tabs').addEventListener('keydown',e=>{
+  const i=ORDER.indexOf(e.target.dataset.tab); if(i<0) return;
+  const j={ArrowRight:(i+1)%ORDER.length, ArrowLeft:(i+ORDER.length-1)%ORDER.length, Home:0, End:ORDER.length-1}[e.key];
+  if(j===undefined) return; e.preventDefault(); setTab(ORDER[j]); $('#tab-'+ORDER[j]).focus();
+});
 
 function restore(json){
   let o; try{ o=JSON.parse(json); }catch(e){ return; }
@@ -1095,6 +1120,8 @@ if('serviceWorker' in navigator && location.protocol==='https:'){
 }
 
 if(data.tab && ORDER.includes(data.tab)) tab=data.tab;
+// Après un rechargement, on repart du haut : la bannière « Comptage repris » doit rester en vue
+try{ if('scrollRestoration' in NAV) NAV.scrollRestoration='manual'; }catch(e){}
 try{ NAV.replaceState({cb:'base'},''); }catch(e){}
 navPush({cb:'app',tab});
 render();
