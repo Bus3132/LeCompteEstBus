@@ -165,15 +165,22 @@ input.num.bad{border-color:var(--warn)}
 .chip:not([aria-pressed="true"]):hover{border-color:var(--dc,var(--g))}
 .chips input.num{flex:0 0 96px;height:46px;font-size:20px}
 
-details.settings{scroll-margin-top:150px;background:var(--surface);border:1px solid var(--line);border-radius:14px}
-details.settings summary{padding:12px 14px;cursor:pointer;font-weight:700;font-size:15px;color:var(--navy)}
+.teamwarn{background:var(--warn-bg);color:var(--warn);border:1.5px solid var(--warn);border-radius:12px;padding:12px 14px;font-size:15px}
+.sethelp{margin:0;font-size:14px;color:var(--muted)}
+.setcard{background:var(--surface);border:1px solid var(--line);border-top:5px solid var(--g,var(--line));border-radius:14px;overflow:hidden}
+.setcard h3{margin:0;padding:12px 14px 8px;font-size:17px;color:var(--navy)}
 .setgrid{display:grid;grid-template-columns:1fr 88px 88px;gap:8px 10px;align-items:center;padding:0 14px 14px}
+.setgrid .lbl{display:flex;align-items:center;gap:6px}
+.change{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 12px;background:var(--field);border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--navy);font-weight:700}
+.change b{font-family:var(--f-num);font-size:22px}
+.change s{color:var(--muted);font-weight:600}
+.pwrow{display:flex;gap:8px}
+.pwrow input{flex:1 1 0;width:0;min-width:0}
+.pwrow .secondary{flex:0 0 auto;min-height:48px;padding:0 14px;font-size:15px}
 .setgrid .h{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .setgrid .lbl{font-weight:700}
 .setgrid .lbl small{display:block;font-weight:400;font-size:12px;color:var(--muted)}
 .setgrid input.num{height:44px;font-size:18px}
-.setgrid .foot{grid-column:1/-1;display:grid;gap:8px;margin-top:4px}
-.setgrid .foot p{margin:0;font-size:13px;color:var(--muted)}
 .linkbtn{justify-self:start;border:1px solid var(--line);background:var(--field);border-radius:10px;padding:8px 12px;font-weight:700;font-size:14px;color:var(--navy)}
 
 .next{display:flex;justify-content:flex-end}
@@ -284,6 +291,7 @@ footer button{border:0;background:transparent;color:var(--blue);text-decoration:
   <footer>
     <div class="brush" aria-hidden="true"></div>
     <span>Le compte est bus · Bus 31/32 · Marseille</span>
+    <button id="settings-link">Réglages camion (communs à toute l'équipe)</button>
     <button id="howto-link">Comment installer l'appli sur son téléphone</button>
   </footer>
 </div>
@@ -373,7 +381,7 @@ let lastSnap=null;
 function persist(){
   const cur=snap(), changed = cur!==lastSnap;
   if(changed && lastSnap!==null) data.saved=Date.now();
-  lastSnap=cur; data.last=lastId; data.tab=tab;
+  lastSnap=cur; data.last=lastId; data.tab = tab==='set' ? backTab : tab;
   const ok1=save(KEY,data), ok2=save(KEYBAK,data);
   save(KEYHIST,{history:history.slice(-60),future:future.slice(-60)});
   const wasOK=saveOK; saveOK = ok1||ok2;
@@ -469,6 +477,11 @@ function applyTeam(row,quiet){
 }
 function refreshSettingsView(){
   if(tab==='res'){ if($('#modal').hidden) render(); return; }
+  if(tab==='set'){
+    ALL.forEach(it=>{ const a=$('#sf-'+it.id), b=$('#sp-'+it.id);
+      if(a && document.activeElement!==a) a.value=settings[it.id].fixed; if(b && document.activeElement!==b) b.value=settings[it.id].per; });
+    const ti=$('#team-info'); if(ti) ti.textContent=teamInfo(); return;
+  }
   const g=GROUPS.find(x=>x.id===tab);
   g.items.forEach(it=>{ const a=$('#sf-'+it.id), b=$('#sp-'+it.id);
     if(a && document.activeElement!==a) a.value=settings[it.id].fixed; if(b && document.activeElement!==b) b.value=settings[it.id].per; refreshRow(it.id); });
@@ -487,13 +500,20 @@ let pendingTeam=null, teamCode=load(KEYTEAMCODE,''); if(typeof teamCode!=='strin
 function askTeamChange(id,field,value){
   const it=ALL.find(x=>x.id===id), g=it.g, s=settings[id];
   pendingTeam={id, fixed: field==='fixed'?value:s.fixed, per: field==='per'?value:s.per};
-  const what = field==='fixed' ? `nombre camion : <b>${s.fixed} → ${value}</b>` : `${g.unit} par ${g.container} : <b>${s.per} → ${value}</b>`;
+  const what = field==='fixed' ? 'Nombre camion' : `${g.unit[0].toUpperCase()+g.unit.slice(1)} par ${g.container}`;
+  const old = field==='fixed' ? s.fixed : s.per;
+  // Effet sur le total du jour de ce dosage
+  const c=data.counts[id], newTot = n(c.open) + n(c.closed)*pendingTeam.per + n(pendingTeam.fixed);
+  const effect = filled(id)
+    ? `Total du jour pour ${it.sub} ${it.label} : <b>${total(id)} → ${newTot}</b> ${g.unit}.`
+    : `${it.sub} ${it.label} n'est pas encore compté aujourd'hui ; le camion y ajoutera ${n(pendingTeam.fixed)} au lieu de ${n(s.fixed)}.`;
   openModal(`
-    <h3 id="modal-title">Êtes-vous sûr de vouloir changer pour l'ensemble de l'équipe ?</h3>
-    <p>${it.sub} ${it.label}, ${what}</p>
+    <h3 id="modal-title">Changer ce chiffre pour toute l'équipe ?</h3>
+    <div class="change"><span>${it.sub} ${it.label} · ${what}</span><b><s>${old}</s> → ${value}</b></div>
+    <p>${effect}</p>
     <p id="team-msg">Le nouveau chiffre s'appliquera sur tous les téléphones et changera les totaux de tout le monde.</p>
     <label class="codefield" for="team-code">Mot de passe de l'équipe
-      <input id="team-code" type="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done"${teamCode?'':' data-autofocus'} value="${(teamCode||'').replace(/"/g,'&quot;')}">
+      <span class="pwrow"><input id="team-code" type="password" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done"${teamCode?'':' data-autofocus'} value="${(teamCode||'').replace(/"/g,'&quot;')}"><button type="button" class="secondary" id="team-show" aria-pressed="false" aria-controls="team-code">Afficher</button></span>
     </label>
     <div class="btns">
       <button class="primary" id="team-yes">Oui, changer pour toute l'équipe</button>
@@ -529,7 +549,7 @@ function renderGroup(g){
   <section class="panel ${g.id}${locked?' locked':''}">
     ${resumeBanner()}${lockBanner()}
     <div class="ghead"><h2><span class="pill">${g.short}</span>${g.name}</h2><p>${groupHead(g)}</p></div>
-    ${unset===g.items.length ? `<div class="notice"><span>Le nombre « camion » n'est pas réglé (compté 0).</span><button data-open-settings>Régler</button></div>`:''}
+    ${unset===g.items.length ? `<div class="notice"><span>Le nombre « camion » n'est pas réglé (compté 0).</span><button data-open-settings>Réglages camion</button></div>`:''}
     <div class="list">
       <div class="cols ${c3}"><span>Dosage</span><span>${g.openLbl}</span>${g.chips?'':`<span>${g.closedLbl}</span>`}<span>Reste</span></div>
       ${g.items.map(it=>`
@@ -550,24 +570,34 @@ function renderGroup(g){
         <div class="formula" id="f-${it.id}"></div>
       </div>`).join('')}
     </div>
-    <details class="settings" id="settings">
-      <summary>Réglages : camion et contenance</summary>
-      <div class="setgrid">
-        <span class="h">Dosage</span><span class="h">Camion</span><span class="h">Par ${g.container}</span>
-        ${g.items.map(it=>`
-          <span class="lbl">${it.label}</span>
-          <input class="num" id="sf-${it.id}" data-sid="${it.id}" data-sf="fixed" ${inputAttrs} value="${settings[it.id].fixed??''}" placeholder="0" aria-label="${it.sub} ${it.label} — nombre camion">
-          <input class="num" id="sp-${it.id}" data-sid="${it.id}" data-sf="per" ${inputAttrs} value="${settings[it.id].per}" aria-label="${it.sub} ${it.label} — ${g.unit} par ${g.container}">
-        `).join('')}
-        <div class="foot">
-          <p>Le nombre camion est ajouté au total de chaque dosage. <b>Ces chiffres sont communs à toute l'équipe</b> : si vous en changez un, il change sur tous les téléphones (une confirmation et le mot de passe de l'équipe sont demandés).</p>
-          <p id="team-info">${teamInfo()}</p>
-        </div>
-      </div>
-    </details>
     <div class="next"><button class="primary" data-goto="${nextTab}">${nextLbl} →</button></div>
   </section>`;
   g.items.forEach(it=>{ $('#o-'+it.id).value=data.counts[it.id].open; $('#c-'+it.id).value=data.counts[it.id].closed; syncChips(it.id); refreshRow(it.id); });
+}
+
+/* ---------- Réglages camion (communs à toute l'équipe) : écran à part ---------- */
+let backTab='metha';
+function renderSettings(){
+  main.innerHTML = `
+  <section class="panel settingsview">
+    <div class="ghead"><h2><span class="pill">ÉQUIPE</span>Réglages camion</h2></div>
+    <div class="teamwarn"><b>Ces chiffres valent pour toute l'équipe.</b> Un changement s'applique sur tous les téléphones et change les totaux de tout le monde. Le mot de passe de l'équipe est demandé, avec une confirmation.</div>
+    <p class="sethelp">Le nombre camion est ajouté au total de chaque dosage (stock du camion, pas recompté chaque jour).</p>
+    ${GROUPS.map(g=>`
+    <div class="setcard ${g.id}">
+      <h3>${g.name}</h3>
+      <div class="setgrid">
+        <span class="h">Dosage</span><span class="h">Camion</span><span class="h">${g.unit} par ${g.container}</span>
+        ${g.items.map(it=>`
+          <span class="lbl"${it.color?` style="--dc:${it.color}"`:''}>${vial(it.color)}${it.label}</span>
+          <input class="num" id="sf-${it.id}" data-sid="${it.id}" data-sf="fixed" ${inputAttrs} value="${settings[it.id].fixed??''}" placeholder="0" aria-label="${it.sub} ${it.label} — nombre camion">
+          <input class="num" id="sp-${it.id}" data-sid="${it.id}" data-sf="per" ${inputAttrs} value="${settings[it.id].per}" aria-label="${it.sub} ${it.label} — ${g.unit} par ${g.container}">
+        `).join('')}
+      </div>
+    </div>`).join('')}
+    <p class="sethelp" id="team-info">${teamInfo()}</p>
+    <div class="next"><button class="primary" data-back>← Retour au comptage</button></div>
+  </section>`;
 }
 
 function syncChips(id){
@@ -702,7 +732,7 @@ function markHere(){
   if(lastId){ const el=main.querySelector(`.item[data-id="${lastId}"]`); if(el) el.classList.add('here'); }
 }
 function render(){
-  if(tab==='res') renderResult(); else renderGroup(GROUPS.find(g=>g.id===tab));
+  if(tab==='res') renderResult(); else if(tab==='set') renderSettings(); else renderGroup(GROUPS.find(g=>g.id===tab));
   markHere(); updateChrome();
 }
 
@@ -717,7 +747,7 @@ window.addEventListener('popstate',e=>{
   const st=e.state||{};
   if(pendingBack){ pendingBack=false; if(queuedModal){ queuedModal=false; navPush({cb:'modal'}); modalPushed=true; } runAfterBack(); return; }
   if(!$('#modal').hidden){ modalPushed=false; closeModal(true); return; }
-  if(st.cb==='app'){ exitArmed=false; if(ORDER.includes(st.tab) && st.tab!==tab) setTab(st.tab,true); return; }
+  if(st.cb==='app'){ exitArmed=false; if((ORDER.includes(st.tab)||st.tab==='set') && st.tab!==tab) setTab(st.tab,true); return; }
   // arrivé au tout début : on prévient avant de quitter
   if(!exitArmed){
     exitArmed=true; toast('Appuyez encore sur Précédent pour quitter l\'appli');
@@ -796,6 +826,8 @@ $('#modal-box').addEventListener('click',e=>{
   if(e.target.closest('#reset-yes') || e.target.closest('#newday-reset')) doReset();
   if(e.target.closest('#do-install')) promptInstall();
   if(e.target.closest('#team-yes')) sendTeamChange();
+  const sh=e.target.closest('#team-show');
+  if(sh){ const i=$('#team-code'), on=i.type==='password'; i.type=on?'text':'password'; sh.textContent=on?'Masquer':'Afficher'; sh.setAttribute('aria-pressed',on); i.focus(); }
   if(e.target.closest('#sent-yes')){ closeModal(); markSent(); }
   if(e.target.closest('#recount-yes')) doRecount();
   const fix=e.target.closest('[data-fix]'); if(fix){ closeModal(); afterBack(()=>goField(fix.dataset.fix,fix.dataset.fixf)); return; }
@@ -844,6 +876,7 @@ async function promptInstall(){
 }
 $('#install').addEventListener('click',showHowto);
 $('#howto-link').addEventListener('click',showHowto);
+$('#settings-link').addEventListener('click',()=>setTab('set'));
 
 /* ---------- Événements de saisie ---------- */
 let before=null, activeInput=null, justFocused=null, keepCaret=null;
@@ -990,7 +1023,8 @@ main.addEventListener('click',e=>{
   const more=e.target.closest('[data-more]');
   if(more){ openMore(more.dataset.id,''); return; }
   const go=e.target.closest('[data-goto]'); if(go){ setTab(go.dataset.goto); return; }
-  if(e.target.closest('[data-open-settings]')){ const d=$('#settings'); d.open=true; d.scrollIntoView({behavior:'smooth',block:'start'}); return; }
+  if(e.target.closest('[data-open-settings]')){ setTab('set'); return; }
+  if(e.target.closest('[data-back]')){ setTab(backTab); return; }
   if(e.target.id==='copy'){ copyResult(); return; }
 });
 
@@ -1010,7 +1044,11 @@ function copyResult(){
   try{ navigator.clipboard.writeText(txt).then(()=>toast('Résultat copié'),fallback); }catch(err){ fallback(); }
 }
 
-function setTab(t,fromBack){ if(!fromBack && t!==tab){ exitArmed=false; navPush({cb:'app',tab:t}); } tab=t; save(KEYTAB,t); persist(); render(); window.scrollTo({top:0}); }
+function setTab(t,fromBack){
+  if(t==='set' && tab!=='set') backTab=tab;
+  if(!fromBack && t!==tab){ exitArmed=false; navPush({cb:'app',tab:t}); }
+  tab=t; if(t!=='set') save(KEYTAB,t); persist(); render(); window.scrollTo({top:0});
+}
 document.querySelector('.tabs').addEventListener('click',e=>{ const b=e.target.closest('[data-tab]'); if(b) setTab(b.dataset.tab); });
 
 function restore(json){
